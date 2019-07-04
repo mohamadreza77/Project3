@@ -42,6 +42,8 @@ int timerFlag = 0;
 int gameTime = 0;
 int oneSecond = 0;
 int d1 = 0,d2 = 1,d3= 1,d4= 1;
+int flagADC = 1;
+
 
 extern int mode; // 0 => prologue, 1 => menu, 2 => play
 extern int plantsType;
@@ -50,6 +52,7 @@ extern int ascii;
 extern int symb[4][20];
 extern int chance;
 extern int level;
+extern int seed;
 extern RTC_TimeTypeDef t;
 extern RTC_HandleTypeDef hrtc;
 extern TIM_HandleTypeDef htim3;
@@ -355,15 +358,15 @@ void ADC1_2_IRQHandler(void)
 	
 	int x = HAL_ADC_GetValue(&hadc1);
 	x = x * 199/63;
-	
-//	HAL_GPIO_WritePin(GPIOE,GPIO_PIN_10,x > 10);
-//	HAL_GPIO_WritePin(GPIOE,GPIO_PIN_11,x > 20);
-//	HAL_GPIO_WritePin(GPIOE,GPIO_PIN_12,x > 30);
-//	HAL_GPIO_WritePin(GPIOE,GPIO_PIN_13,x > 40);
-//	HAL_GPIO_WritePin(GPIOE,GPIO_PIN_14,x > 50);
 	if(mode == 2){
 		updateCursor(x/10,0);
 	}
+	if(flagADC == 1){
+		seed = HAL_ADC_GetValue(&hadc2);
+		srand(seed);
+		flagADC = 0;
+	}
+	
 	
   /* USER CODE END ADC1_2_IRQn 0 */
   HAL_ADC_IRQHandler(&hadc1);

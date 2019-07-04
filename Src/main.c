@@ -108,7 +108,7 @@ int maxZombie = 5;
 int activeZombie = 0;
 int ascii = 43;
 int lastChance;
-
+int seed;
 int mode = 0; // 0 => prologue, 1 => menu, 2 => play
 char map[5][20];
 int symb[4][20];
@@ -223,10 +223,10 @@ void zombieCreator(){
 			}
 		}
 		if(i == maxZombie) return;
-		zombies[i].time = (srand(rand())%6)+1;
-		zombies[i].y = srand(rand())%20;
+		zombies[i].time = (rand()%6)+1;
+		zombies[i].y = rand()%20;
 		zombies[i].x = 0;
-		zombies[i].type = (srand(rand())%4);
+		zombies[i].type = (rand()%4);
 		zombies[i].power = zombiesEnergy[zombies[i].type];
 		zombies[i].type += 4;
 		zombies[i].alive = 1;
