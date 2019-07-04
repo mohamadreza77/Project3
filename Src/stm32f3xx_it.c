@@ -39,8 +39,7 @@
 int chmode = 1;
 int limity = 2;
 int timerFlag = 0;
-int rand;
-int gameTime = 160;
+int gameTime = 0;
 int oneSecond = 0;
 int d1 = 0,d2 = 1,d3= 1,d4= 1;
 
@@ -50,6 +49,7 @@ extern int counter;
 extern int ascii;
 extern int symb[4][20];
 extern int chance;
+extern int level;
 extern RTC_TimeTypeDef t;
 extern RTC_HandleTypeDef hrtc;
 extern TIM_HandleTypeDef htim3;
@@ -68,6 +68,9 @@ extern void showPrologue();
 extern void clearScreen();
 extern void reverse_count();
 extern void moduleBlinking();
+extern void initZombies();
+extern void loseInit();
+extern void winInit();
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
@@ -362,7 +365,6 @@ void ADC1_2_IRQHandler(void)
 		updateCursor(x/10,0);
 	}
 	
-//	rand = HAL_ADC_GetValue(&hadc2);
   /* USER CODE END ADC1_2_IRQn 0 */
   HAL_ADC_IRQHandler(&hadc1);
   HAL_ADC_IRQHandler(&hadc2);
@@ -395,6 +397,7 @@ void TIM2_IRQHandler(void)
 		HAL_GPIO_WritePin(GPIOD,GPIO_PIN_5,1);
 		HAL_GPIO_WritePin(GPIOD,GPIO_PIN_6,1);
 		HAL_GPIO_WritePin(GPIOD,GPIO_PIN_7,1);
+		initZombies();
 		
 		timerFlag=1;
 	}
@@ -406,6 +409,12 @@ void TIM2_IRQHandler(void)
 				cursor_y = 0;
 				symb[0][0] = 43;
 				limity = 2;
+			break;
+			case 5:
+				loseInit();
+			break;
+			case 6:
+				winInit();
 			break;
 				
 		}
@@ -421,17 +430,23 @@ void TIM2_IRQHandler(void)
 			cursor_y = 0;
 			mode = 2;
 			limity = 3;
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_8,1);
 			chmode = 1;
 		}
 	}
 	else if(mode == 2){ // NewGame
 		HAL_TIM_Base_Start_IT(&htim3);
+		if(chance == 0){
+			chmode = 1;
+			mode = 5; //// lose
+		}
 		newGame();
+		
 	}
 	else if(mode == 3){ // LoadGame
 		
 	}
-	if(mode != 0)
+	if(mode != 0 && mode != 5 && mode != 6)
 		blinking();
 		
   /* USER CODE END TIM2_IRQn 0 */
@@ -446,35 +461,47 @@ void TIM2_IRQHandler(void)
 */
 void TIM3_IRQHandler(void)
 {
-
-	reverse_count(gameTime,d4,d3,d2,d1);
-	if(d1 == 0){
-		d1 = 1;
-		d2 = 0;
-	}
-	else if(d2 == 0){
-		d2 = 1;
-		d3 = 0;
-	}
-	else if(d3 == 0){
-		d3 = 1;
-		d4 = 0;
-	}
-	else if(d4 == 0){
-		d4 = 1;
-		d1 = 0;
-	}
   /* USER CODE BEGIN TIM3_IRQn 0 */
-
-
+ 
 	
-	oneSecond++;
-	if(gameTime != 0 && oneSecond == 200){
-		gameTime--;
-		oneSecond =0;
+		reverse_count(gameTime,d4,d3,d2,d1);
+		if(d1 == 0){
+			d1 = 1;
+			d2 = 0;
+		}
+		else if(d2 == 0){
+			d2 = 1;
+			d3 = 0;
+		}
+		else if(d3 == 0){
+			d3 = 1;
+			d4 = 0;
+		}
+		else if(d4 == 0){
+			d4 = 1;
+			d1 = 0;
+		}
+	if(mode == 2 || mode == 3){
+		oneSecond++;
+		if(gameTime != 160 && oneSecond == 200){
+			gameTime++;
+			if(gameTime % 20 == 0){
+				level++;
+				HAL_GPIO_WritePin(GPIOE,GPIO_PIN_9,level > 1);
+				HAL_GPIO_WritePin(GPIOE,GPIO_PIN_10,level > 2);
+				HAL_GPIO_WritePin(GPIOE,GPIO_PIN_11,level > 3);
+				HAL_GPIO_WritePin(GPIOE,GPIO_PIN_12,level > 4);
+				HAL_GPIO_WritePin(GPIOE,GPIO_PIN_13,level > 5);
+				HAL_GPIO_WritePin(GPIOE,GPIO_PIN_14,level > 6);
+				HAL_GPIO_WritePin(GPIOE,GPIO_PIN_15,level > 7);
+			}
+			oneSecond =0;
+		}
+		if(gameTime == 160){
+			chmode = 1;
+			mode = 6; //win
+		}
 	}
-	
-	
 	
   /* USER CODE END TIM3_IRQn 0 */
   HAL_TIM_IRQHandler(&htim3);

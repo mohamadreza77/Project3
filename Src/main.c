@@ -57,6 +57,7 @@ SPI_HandleTypeDef hspi1;
 
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
+
 PCD_HandleTypeDef hpcd_USB_FS;
 
 /* USER CODE BEGIN PV */
@@ -84,7 +85,7 @@ static void MX_TIM3_Init(void);
 
 /* USER CODE BEGIN 0 */
 extern int limity;
-extern int rand;
+extern int gameTime;
 RTC_TimeTypeDef t;
 ////////////////////////////////////////CURSOR/////////////////////////////////////////
 int cursor_x = 0;
@@ -93,25 +94,27 @@ char* cursor_sign;
 ////////////////////////////////////////CURSOR/////////////////////////////////////////
 
 struct Zombie{
+	int type;
 	int x;
 	int y;
 	int time;
 	int power;
-	int hp;
+	int alive;
 };
 struct Zombie zombies[5];
-
+const int zombiesEnergy[4] = {1,2,3,4};
 int zombieSpeed = 2;
 int maxZombie = 5;
 int activeZombie = 0;
 int ascii = 43;
+int lastChance;
 
 int mode = 0; // 0 => prologue, 1 => menu, 2 => play
-char map[4][20];
+char map[5][20];
 int symb[4][20];
 const int plantsEnergy[3] = {1,2,4};
 const int plantsCoolDown[3] = {4,8,10};
-int plantsNumber = 7;
+int plantsNumber = 0;
 int level = 1;
 int chance = 5;
 int plantsType = 0;
@@ -179,35 +182,56 @@ void updateCursor(int difX, int difY){
 		symb[cursor_x][cursor_y] = ascii;
 }
 
-void moveZombie(){
-	HAL_RTC_GetTime(&hrtc,&t,RTC_FORMAT_BIN);
-	char s[10];
-	sprintf(s,"%d",t.Seconds);
-	
-	print(s);
-	for(int i = 0; i < maxZombie; i++){
-		if(zombies[i].time - t.Seconds > zombieSpeed || t.Seconds - zombies[i].time > zombieSpeed){
-			
-//			setCursor(zombies[i].x,zombies[i].y);
-//			print(" ");
-//			zombies[i].y++;
-////			map[zombies[i].x][zombies[i].y] 
-////		write
-//			setCursor(zombies[i].x,zombies[i].y);
-//			print("Z");
+
+
+void moveZombie(int i){
+	if(gameTime - zombies[i].time > zombieSpeed){
+		
+		map[zombies[i].x][zombies[i].y] = 0;
+		if(zombies[i].x > 0)
+			symb[zombies[i].x-1][zombies[i].y] = 160;
+		zombies[i].x++;
+		
+		if(zombies[i].x == 5){
+			chance--;
+			if(chance == 1) lastChance = gameTime;
+			zombies[i].alive = -1;
+			symb[zombies[i].x-2][zombies[i].y] = 160;
+			activeZombie--;
+		}else{
+			map[zombies[i].x][zombies[i].y] = -zombies[i].power;
+			symb[zombies[i].x-1][zombies[i].y] = zombies[i].type;
+			zombies[i].time = gameTime;
 		}
+		
 	}
 }
 
+void initZombies(){
+	for(int i =0; i < maxZombie; i ++){
+		zombies[i].alive = -1;
+	}
+}
+
+
 void zombieCreator(){
 	if(activeZombie < maxZombie){
-
-//		int x = HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_9)%20;
-		int x = 10;
-//		map[0][x] = -((HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_9)%4)+ 1);
-		map[0][x] = -((2)+ 1);
-		zombies[activeZombie].time = t.Seconds;
+		int i = 0;
+		for(; i < maxZombie; i ++){
+			if(zombies[i].alive == -1){
+				break;
+			}
+		}
+		if(i == maxZombie) return;
+		zombies[i].time = (srand(rand())%6)+1;
+		zombies[i].y = srand(rand())%20;
+		zombies[i].x = 0;
+		zombies[i].type = (srand(rand())%4);
+		zombies[i].power = zombiesEnergy[zombies[i].type];
+		zombies[i].type += 4;
+		zombies[i].alive = 1;
 		activeZombie++;
+		map[zombies[i].x][zombies[i].y] = zombies[i].power;
 	}
 }
 
@@ -220,32 +244,60 @@ void menuInit(){
 	setCursor(2,2);
 	print("About");
 }
+void calScore(){
+	int score = level * (gameTime * 2 - lastChance);
+	char s[10];
+	sprintf(s,"%d",score);
+	setCursor(8,2);
+	print(s);
+}
+
+void loseInit(){
+	setCursor(8,0);
+	print("Game");
+	setCursor(8,1);
+	print("Over");
+	calScore();
+}
+
+void winInit(){
+	setCursor(8,0);
+	print("You");
+	setCursor(8,1);
+	print("Won");
+	calScore();
+}
+
 
 void clearScreen(){
 	clear();
+//	for(int i = 0; i < 4; i++){
+//		for(int j = 0; j < 20; j++){
+//			setCursor(j,i);
+//			write(160);
+//		}
+//	}
 }
 
 void newGame(){
-	if(plantsNumber == 0) return;
-	if(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_0)){
-		if(map[cursor_x][cursor_y] == 0 && plantsType != 0){
-			map[cursor_x][cursor_y] = ascii;
-			symb[cursor_x][cursor_y] = ascii;
-			plantsNumber--;
+	if(plantsNumber != 7){
+		if(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_0)){
+			if(map[cursor_x][cursor_y] == 0 && plantsType != 0){
+				map[cursor_x][cursor_y] = ascii;
+				symb[cursor_x][cursor_y] = ascii;
+				plantsNumber++;
+			}
+			while(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_0));
 		}
-		while(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_0));
 	}
 	
-//	char s[10];
-//	sprintf(s,"%d",rand);
-//	setCursor(3,0);
-//	print(s);
-
-//	if(rand == 3){
-//		zombieCreator();
-//	}
-//	moveZombie();
+	zombieCreator();
 	
+	for(int i=0; i < maxZombie; i ++){
+		if(zombies[i].alive == 1){
+			moveZombie(i);
+		}
+	}
 }
 
 void moduleBlinking(){
@@ -859,10 +911,6 @@ static void MX_USB_PCD_Init(void)
         * Output
         * EVENT_OUT
         * EXTI
-     PE9   ------> S_TIM1_CH1
-     PE11   ------> S_TIM1_CH2
-     PE13   ------> S_TIM1_CH3
-     PE14   ------> S_TIM1_CH4
 */
 static void MX_GPIO_Init(void)
 {
@@ -878,7 +926,9 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(CS_I2C_SPI_GPIO_Port, CS_I2C_SPI_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOE, CS_I2C_SPI_Pin|GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10 
+                          |GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14 
+                          |GPIO_PIN_15, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOC, seg7_Pin|seg7D1_Pin|seg7D2_Pin|seg7D3_Pin, GPIO_PIN_RESET);
@@ -890,12 +940,16 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOD, seg7D4_Pin|seg7dot_Pin|GPIO_PIN_4|GPIO_PIN_5 
                           |GPIO_PIN_6|GPIO_PIN_7, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin : CS_I2C_SPI_Pin */
-  GPIO_InitStruct.Pin = CS_I2C_SPI_Pin;
+  /*Configure GPIO pins : CS_I2C_SPI_Pin PE8 PE9 PE10 
+                           PE11 PE12 PE13 PE14 
+                           PE15 */
+  GPIO_InitStruct.Pin = CS_I2C_SPI_Pin|GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10 
+                          |GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14 
+                          |GPIO_PIN_15;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(CS_I2C_SPI_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
   /*Configure GPIO pin : MEMS_INT4_Pin */
   GPIO_InitStruct.Pin = MEMS_INT4_Pin;
@@ -914,14 +968,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : PE9 PE11 PE13 PE14 */
-  GPIO_InitStruct.Pin = GPIO_PIN_9|GPIO_PIN_11|GPIO_PIN_13|GPIO_PIN_14;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  GPIO_InitStruct.Alternate = GPIO_AF2_TIM1;
-  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
   /*Configure GPIO pins : seg7_Pin seg7D1_Pin seg7D2_Pin seg7D3_Pin */
   GPIO_InitStruct.Pin = seg7_Pin|seg7D1_Pin|seg7D2_Pin|seg7D3_Pin;
