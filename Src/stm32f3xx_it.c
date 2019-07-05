@@ -66,7 +66,7 @@ extern char* cursor_sign;
 extern void blinking();
 extern void updateCursor(int difX, int difY);
 extern void menuInit();
-extern void newGame();
+extern void gameLogic();
 extern void showPrologue();
 extern void clearScreen();
 extern void reverse_count();
@@ -270,8 +270,10 @@ void EXTI0_IRQHandler(void)
 				updateCursor(0,1);
 			}
 			while(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_0)){
-				HAL_Delay(5);
-				TIM3_IRQHandler();
+				if(mode == 2){
+					HAL_Delay(5);
+					TIM3_IRQHandler();
+				}
 			}
 			HAL_Delay(30);
 		}
@@ -280,8 +282,10 @@ void EXTI0_IRQHandler(void)
 				updateCursor(0,-1);
 			}
 			while(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_0)){
-				HAL_Delay(5);
-				TIM3_IRQHandler();
+				if(mode == 2){
+					HAL_Delay(5);
+					TIM3_IRQHandler();
+				}
 			}
 			HAL_Delay(30);
 			
@@ -293,8 +297,10 @@ void EXTI0_IRQHandler(void)
 				else ascii = plantsType;
 			}
 			while(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_0)){
-				HAL_Delay(5);
-				TIM3_IRQHandler();
+				if(mode == 2){
+					HAL_Delay(5);
+					TIM3_IRQHandler();
+				}
 			}
 			HAL_Delay(30);
 			
@@ -443,7 +449,7 @@ void TIM2_IRQHandler(void)
 			chmode = 1;
 			mode = 5; //// lose
 		}
-		newGame();
+		gameLogic();
 		
 	}
 	else if(mode == 3){ // LoadGame

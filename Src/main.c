@@ -1,4 +1,3 @@
-
 /**
   ******************************************************************************
   * @file           : main.c
@@ -103,24 +102,24 @@ struct Zombie{
 };
 struct Zombie zombies[5];
 const int zombiesEnergy[4] = {1,2,3,4};
-int zombieSpeed = 2;
+int zombieSpeed = 5;
 int maxZombie = 5;
 int activeZombie = 0;
 int ascii = 43;
 int lastChance;
 int seed;
 int mode = 0; // 0 => prologue, 1 => menu, 2 => play
-char map[5][20];
+char map[4][20];
 int symb[4][20];
 const int plantsEnergy[3] = {1,2,4};
 const int plantsCoolDown[3] = {4,8,10};
+int lastPlant[3] = {-11,-11,-11};
 int plantsNumber = 0;
 int level = 1;
 int chance = 5;
 int plantsType = 0;
 
 void showPrologue(){
-//	while(mode == 0){
 		HAL_Delay(100);
 		setCursor(7,0);
 		print("Plants");
@@ -145,7 +144,6 @@ void showPrologue(){
 		write(7);
 		HAL_Delay(950);
 		clear();
-//	}
 }
 
 int blinkFlag = 0;
@@ -166,8 +164,6 @@ void blinking(){
 	}
 }
 
-
-
 void updateCursor(int difX, int difY){
 	if(map[cursor_x][cursor_y] == 0)
 		symb[cursor_x][cursor_y] = 160;
@@ -183,25 +179,47 @@ void updateCursor(int difX, int difY){
 }
 
 
+int collision(i){
+	int res;
+	if(zombies[i].x == 3) return 0;
+	if(map[zombies[i].x + 1][zombies[i].y] > 0){
+			zombies[i].power--;
+			map[zombies[i].x + 1][zombies[i].y]--;
+			if(zombies[i].power == 0){
+				zombies[i].alive = -1;
+				symb[zombies[i].x][zombies[i].y] = 160;
+				activeZombie--;
+			}
+			if(map[zombies[i].x + 1][zombies[i].y] == 0){
+				symb[zombies[i].x + 1][zombies[i].y] = 160;
+				plantsNumber--;
+			}
+	}
+	else if(map[zombies[i].x + 1][zombies[i].y] < 0)
+		return 1;
+	else
+		return 0;
+}
 
 void moveZombie(int i){
 	if(gameTime - zombies[i].time > zombieSpeed){
-		
-		map[zombies[i].x][zombies[i].y] = 0;
-		if(zombies[i].x > 0)
-			symb[zombies[i].x-1][zombies[i].y] = 160;
+		zombies[i].time = gameTime;
+		if(collision(i)) return;
+		if(zombies[i].x != -1){
+			map[zombies[i].x][zombies[i].y] = 0;
+			symb[zombies[i].x][zombies[i].y] = 160;
+		}
 		zombies[i].x++;
 		
-		if(zombies[i].x == 5){
+		if(zombies[i].x == 4){
 			chance--;
 			if(chance == 1) lastChance = gameTime;
 			zombies[i].alive = -1;
-			symb[zombies[i].x-2][zombies[i].y] = 160;
+			symb[3][zombies[i].y] = 160;
 			activeZombie--;
 		}else{
 			map[zombies[i].x][zombies[i].y] = -zombies[i].power;
-			symb[zombies[i].x-1][zombies[i].y] = zombies[i].type;
-			zombies[i].time = gameTime;
+			symb[zombies[i].x][zombies[i].y] = zombies[i].type;
 		}
 		
 	}
@@ -212,7 +230,6 @@ void initZombies(){
 		zombies[i].alive = -1;
 	}
 }
-
 
 void zombieCreator(){
 	if(activeZombie < maxZombie){
@@ -225,13 +242,12 @@ void zombieCreator(){
 		if(i == maxZombie) return;
 		zombies[i].time = (rand()%6)+1;
 		zombies[i].y = rand()%20;
-		zombies[i].x = 0;
+		zombies[i].x = -1;
 		zombies[i].type = (rand()%4);
 		zombies[i].power = zombiesEnergy[zombies[i].type];
 		zombies[i].type += 4;
 		zombies[i].alive = 1;
 		activeZombie++;
-		map[zombies[i].x][zombies[i].y] = zombies[i].power;
 	}
 }
 
@@ -271,31 +287,31 @@ void winInit(){
 
 void clearScreen(){
 	clear();
-//	for(int i = 0; i < 4; i++){
-//		for(int j = 0; j < 20; j++){
-//			setCursor(j,i);
-//			write(160);
-//		}
-//	}
 }
-
-void newGame(){
+void toPlant(){
 	if(plantsNumber != 7){
 		if(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_0)){
-			if(map[cursor_x][cursor_y] == 0 && plantsType != 0){
+			if(
+					map[cursor_x][cursor_y] == 0 &&
+					plantsType != 0 && 
+					cursor_x != 0 && 
+					gameTime - lastPlant[plantsType-1] > plantsCoolDown[plantsType-1]
+				){
 				map[cursor_x][cursor_y] = ascii;
 				symb[cursor_x][cursor_y] = ascii;
 				plantsNumber++;
+				lastPlant[plantsType-1] = gameTime;
 			}
 			while(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_0));
 		}
 	}
-	
+}
+void gameLogic(){
+	toPlant();
 	zombieCreator();
-	
 	for(int i=0; i < maxZombie; i ++){
 		if(zombies[i].alive == 1){
-			moveZombie(i);
+				moveZombie(i);
 		}
 	}
 }
