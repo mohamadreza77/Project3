@@ -115,7 +115,7 @@ int seed;
 int mode = 0; // 0 => prologue, 1 => menu, 2 => play
 char map[4][20];
 unsigned char name[8];
-int nameLen = -1;
+int nameLen = 0;
 int symb[4][20];
 const int plantsEnergy[3] = {1,2,4};
 const int plantsCoolDown[3] = {4,8,10};
@@ -340,11 +340,11 @@ void getName(){
 void printKeyboardData(int i, int j, int t, int o){
 	if(o == 0){
 		setCursor(++cursor_x,2);
-		strcat(name,&keyboard[i][j][t]);
-		nameLen++;
+//		strcat(name,&keyboard[i][j][t]);
+//		nameLen++;
 	}else{
 		setCursor(cursor_x,2);
-		*(name+nameLen) = keyboard[i][j][t];
+		name[nameLen] = keyboard[i][j][t];
 	}
 	write(keyboard[i][j][t]);
 }

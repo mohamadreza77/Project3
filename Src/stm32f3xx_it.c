@@ -36,6 +36,19 @@
 #include "stm32f3xx_it.h"
 
 /* USER CODE BEGIN 0 */
+extern UART_HandleTypeDef huart2;
+#ifdef __GNUC__
+	#define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
+#else
+	#define PUTCHAR_PROTOTYPE int fputc(int ch, FILE *f)
+#endif
+	
+PUTCHAR_PROTOTYPE
+{
+	HAL_UART_Transmit(&huart2, (uint8_t *)&ch, 1, 1000); // change &uart1 accordingly
+	return ch;
+}
+
 int chmode = 1;
 int limity = 2;
 int timerFlag = 0;
@@ -56,6 +69,7 @@ extern int ascii;
 extern int symb[4][20];
 extern int chance;
 extern int level;
+extern int nameLen;
 extern int seed;
 extern RTC_TimeTypeDef t;
 extern RTC_HandleTypeDef hrtc;
@@ -277,9 +291,11 @@ void EXTI0_IRQHandler(void)
 				updateCursor(0,1);
 			}
 			else if(mode == 4){
-				HAL_UART_Transmit(&huart2,name,sizeof(unsigned char)*32,1000);
+				HAL_UART_Transmit(&huart2,name,sizeof(unsigned char)*16,1000);
 				HAL_Delay(500);
 				mode = 2;
+				chmode = 1;
+				
 			}
 			while(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_0)){
 				if(mode == 2){
@@ -378,6 +394,7 @@ void EXTI1_IRQHandler(void)
 					override = 1;
 				}
 				else{
+					nameLen++;
 					prevKey = 14;
 					keyboardCounter = 0;
 					override = 0;
@@ -401,6 +418,7 @@ void EXTI1_IRQHandler(void)
 					override = 1;
 				}
 				else{
+					nameLen++;
 					prevKey = 10;
 					keyboardCounter = 0;
 					override = 0;
@@ -425,6 +443,7 @@ void EXTI1_IRQHandler(void)
 					override = 1;
 				}
 				else{
+					nameLen++;
 					prevKey = 6;
 					keyboardCounter = 0;
 					override = 0;
@@ -449,6 +468,7 @@ void EXTI1_IRQHandler(void)
 					override = 1;
 				}
 				else{
+					nameLen++;
 					prevKey = 2;
 					keyboardCounter = 0;
 					override = 0;
@@ -513,6 +533,7 @@ void EXTI2_TSC_IRQHandler(void)
 					override = 1;
 				}
 				else{
+					nameLen++;
 					prevKey = 15;
 					keyboardCounter = 0;
 					override = 0;
@@ -536,6 +557,7 @@ void EXTI2_TSC_IRQHandler(void)
 					override = 1;
 				}
 				else{
+					nameLen++;
 					prevKey = 11;
 					keyboardCounter = 0;
 					override = 0;
@@ -560,6 +582,7 @@ void EXTI2_TSC_IRQHandler(void)
 					override = 1;
 				}
 				else{
+					nameLen++;
 					prevKey = 7;
 					keyboardCounter = 0;
 					override = 0;
@@ -584,6 +607,7 @@ void EXTI2_TSC_IRQHandler(void)
 					override = 1;
 				}
 				else{
+					nameLen++;
 					prevKey = 3;
 					keyboardCounter = 0;
 					override = 0;
@@ -652,6 +676,7 @@ void EXTI4_IRQHandler(void)
 					override = 1;
 				}
 				else{
+					nameLen++;
 					prevKey = 16;
 					keyboardCounter = 0;
 					override = 0;
@@ -675,6 +700,7 @@ void EXTI4_IRQHandler(void)
 					override = 1;
 				}
 				else{
+					nameLen++;
 					prevKey = 12;
 					keyboardCounter = 0;
 					override = 0;
@@ -699,6 +725,7 @@ void EXTI4_IRQHandler(void)
 					override = 1;
 				}
 				else{
+					nameLen++;
 					prevKey = 8;
 					keyboardCounter = 0;
 					override = 0;
@@ -723,6 +750,7 @@ void EXTI4_IRQHandler(void)
 					override = 1;
 				}
 				else{
+					nameLen++;
 					prevKey = 4;
 					keyboardCounter = 0;
 					override = 0;
@@ -823,7 +851,6 @@ void TIM2_IRQHandler(void)
 			case 6:
 				winInit();
 			break;
-				
 		}
 		chmode = 0;
 	}
@@ -914,6 +941,7 @@ void TIM3_IRQHandler(void)
 		if(oneAndHalfSecond == 350){
 			passedTimeKey = 1;
 			oneSecond = 0;
+			nameLen++;
 		}
 	}
 	
