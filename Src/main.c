@@ -1,3 +1,4 @@
+
 /**
   ******************************************************************************
   * @file           : main.c
@@ -57,6 +58,8 @@ SPI_HandleTypeDef hspi1;
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 
+UART_HandleTypeDef huart2;
+
 PCD_HandleTypeDef hpcd_USB_FS;
 
 /* USER CODE BEGIN PV */
@@ -76,6 +79,7 @@ static void MX_ADC2_Init(void);
 static void MX_ADC3_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM3_Init(void);
+static void MX_USART2_UART_Init(void);
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
@@ -110,6 +114,8 @@ int lastChance;
 int seed;
 int mode = 0; // 0 => prologue, 1 => menu, 2 => play
 char map[4][20];
+unsigned char name[8];
+int nameLen = -1;
 int symb[4][20];
 const int plantsEnergy[3] = {1,2,4};
 const int plantsCoolDown[3] = {4,8,10};
@@ -118,6 +124,13 @@ int plantsNumber = 0;
 int level = 1;
 int chance = 5;
 int plantsType = 0;
+char keyboard[4][3][5] =
+    {
+    {{'1',' ', ' ', ' ', ' '},{'2','a','b','c',' '},{'3','d','e','f',' '}}
+    ,{{'4','g','h','i',' '},{'5','j','k','l',' '},{'6','m','n','o',' '}}
+    ,{{'7','p','q','r','s'},{'8','t','u','v',' '},{'9','w','x','y','z'}}
+    ,{{'*','+',' ',' ',' '},{'0',' ',' ',' ',' '},{'#',' ',' ',' ',' '}}
+    };
 
 void showPrologue(){
 		HAL_Delay(100);
@@ -240,7 +253,7 @@ void zombieCreator(){
 			}
 		}
 		if(i == maxZombie) return;
-		zombies[i].time = (rand()%6)+1;
+		zombies[i].time = (rand()%6)+8;
 		zombies[i].y = rand()%20;
 		zombies[i].x = -1;
 		zombies[i].type = (rand()%4);
@@ -314,6 +327,26 @@ void gameLogic(){
 				moveZombie(i);
 		}
 	}
+}
+
+void getName(){
+	setCursor(2,0);
+	print("Enter Your Name");
+	setCursor(4,2);
+	print("->");
+	cursor_x = 5;
+}
+
+void printKeyboardData(int i, int j, int t, int o){
+	if(o == 0){
+		setCursor(++cursor_x,2);
+		strcat(name,&keyboard[i][j][t]);
+		nameLen++;
+	}else{
+		setCursor(cursor_x,2);
+		*(name+nameLen) = keyboard[i][j][t];
+	}
+	write(keyboard[i][j][t]);
 }
 
 void moduleBlinking(){
@@ -517,6 +550,7 @@ int main(void)
   MX_ADC3_Init();
   MX_TIM2_Init();
   MX_TIM3_Init();
+  MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
 	LiquidCrystal(GPIOD, GPIO_PIN_8, GPIO_PIN_9, GPIO_PIN_10, GPIO_PIN_11, GPIO_PIN_12, GPIO_PIN_13, GPIO_PIN_14);
 	begin(20,4);
@@ -580,9 +614,10 @@ void SystemClock_Config(void)
     _Error_Handler(__FILE__, __LINE__);
   }
 
-  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USB|RCC_PERIPHCLK_I2C1
-                              |RCC_PERIPHCLK_RTC|RCC_PERIPHCLK_ADC12
-                              |RCC_PERIPHCLK_ADC34;
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USB|RCC_PERIPHCLK_USART2
+                              |RCC_PERIPHCLK_I2C1|RCC_PERIPHCLK_RTC
+                              |RCC_PERIPHCLK_ADC12|RCC_PERIPHCLK_ADC34;
+  PeriphClkInit.Usart2ClockSelection = RCC_USART2CLKSOURCE_PCLK1;
   PeriphClkInit.Adc12ClockSelection = RCC_ADC12PLLCLK_DIV1;
   PeriphClkInit.Adc34ClockSelection = RCC_ADC34PLLCLK_DIV1;
   PeriphClkInit.I2c1ClockSelection = RCC_I2C1CLKSOURCE_HSI;
@@ -903,6 +938,27 @@ static void MX_TIM3_Init(void)
 
 }
 
+/* USART2 init function */
+static void MX_USART2_UART_Init(void)
+{
+
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = 115200;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart2.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart2.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart2) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+}
+
 /* USB init function */
 static void MX_USB_PCD_Init(void)
 {
@@ -1019,6 +1075,9 @@ static void MX_GPIO_Init(void)
 
   HAL_NVIC_SetPriority(EXTI1_IRQn, 1, 1);
   HAL_NVIC_EnableIRQ(EXTI1_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI2_TSC_IRQn, 1, 0);
+  HAL_NVIC_EnableIRQ(EXTI2_TSC_IRQn);
 
   HAL_NVIC_SetPriority(EXTI4_IRQn, 1, 1);
   HAL_NVIC_EnableIRQ(EXTI4_IRQn);

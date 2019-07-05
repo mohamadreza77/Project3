@@ -37,5 +37,7 @@ project3\liquidcrystal.o: ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_spi.
 project3\liquidcrystal.o: ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_spi_ex.h
 project3\liquidcrystal.o: ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_tim.h
 project3\liquidcrystal.o: ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_tim_ex.h
+project3\liquidcrystal.o: ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_uart.h
+project3\liquidcrystal.o: ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_uart_ex.h
 project3\liquidcrystal.o: ../Inc/LiquidCrystal.h
 project3\liquidcrystal.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h

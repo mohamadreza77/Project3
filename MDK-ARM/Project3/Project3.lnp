@@ -14,6 +14,8 @@
 "project3\stm32f3xx_hal_spi_ex.o"
 "project3\stm32f3xx_hal_tim.o"
 "project3\stm32f3xx_hal_tim_ex.o"
+"project3\stm32f3xx_hal_uart.o"
+"project3\stm32f3xx_hal_uart_ex.o"
 "project3\stm32f3xx_hal_pcd.o"
 "project3\stm32f3xx_hal_pcd_ex.o"
 "project3\stm32f3xx_hal.o"

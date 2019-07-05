@@ -43,11 +43,15 @@ int gameTime = 0;
 int oneSecond = 0;
 int d1 = 0,d2 = 1,d3= 1,d4= 1;
 int flagADC = 1;
-
-
+extern char keyboard[4][3][5];
+int prevKey = -1;
+int keyboardCounter = 0;
+int oneAndHalfSecond = 0;
+int override = 0;
+int  passedTimeKey = 0;
+extern unsigned char name[8];
 extern int mode; // 0 => prologue, 1 => menu, 2 => play
 extern int plantsType;
-extern int counter;
 extern int ascii;
 extern int symb[4][20];
 extern int chance;
@@ -74,6 +78,8 @@ extern void moduleBlinking();
 extern void initZombies();
 extern void loseInit();
 extern void winInit();
+extern void getName();
+extern void printKeyboardData(int i, int j, int t, int o);
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
@@ -82,6 +88,7 @@ extern ADC_HandleTypeDef hadc2;
 extern ADC_HandleTypeDef hadc3;
 extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim3;
+extern UART_HandleTypeDef huart2;
 
 /******************************************************************************/
 /*            Cortex-M4 Processor Interruption and Exception Handlers         */ 
@@ -239,7 +246,7 @@ void SysTick_Handler(void)
 void EXTI0_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI0_IRQn 0 */
-		for(int i = 0; i < 4; i++){
+	for(int i = 0; i < 4; i++){
 		if(i == 0){
 			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_4,1);
 			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_5,0);
@@ -266,8 +273,13 @@ void EXTI0_IRQHandler(void)
 		}
 		
 		if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_0) && i == 0){ //s13
-			if(mode != 0){
+			if(mode == 2 || mode == 3){
 				updateCursor(0,1);
+			}
+			else if(mode == 4){
+				HAL_UART_Transmit(&huart2,name,sizeof(unsigned char)*32,1000);
+				HAL_Delay(500);
+				mode = 2;
 			}
 			while(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_0)){
 				if(mode == 2){
@@ -275,10 +287,10 @@ void EXTI0_IRQHandler(void)
 					TIM3_IRQHandler();
 				}
 			}
-			HAL_Delay(30);
+			HAL_Delay(20);
 		}
 		if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_0) && i == 1){ //s9
-			if(mode != 0){
+			if(mode == 2 || mode == 3){
 				updateCursor(0,-1);
 			}
 			while(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_0)){
@@ -287,7 +299,7 @@ void EXTI0_IRQHandler(void)
 					TIM3_IRQHandler();
 				}
 			}
-			HAL_Delay(30);
+			HAL_Delay(20);
 			
 		}
 		if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_0) && i == 2){ //s5
@@ -302,7 +314,7 @@ void EXTI0_IRQHandler(void)
 					TIM3_IRQHandler();
 				}
 			}
-			HAL_Delay(30);
+			HAL_Delay(20);
 			
 		}
 		if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_0) && i == 3){ //s1
@@ -311,7 +323,7 @@ void EXTI0_IRQHandler(void)
 				chmode = 1;
 			}
 			while(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_0));
-			HAL_Delay(30);
+			HAL_Delay(20);
 		}
 		
 		HAL_GPIO_WritePin(GPIOD,GPIO_PIN_4,1);
@@ -333,7 +345,128 @@ void EXTI0_IRQHandler(void)
 void EXTI1_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI1_IRQn 0 */
-
+	for(int i = 0; i < 4; i++){
+		if(i == 0){
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_4,1);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_5,0);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_6,0);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_7,0);		
+		}
+		else if(i == 1){
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_4,0);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_5,1);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_6,0);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_7,0);
+		}
+		else if(i == 2){
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_4,0);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_5,0);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_6,1);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_7,0);	
+		}
+		else if(i == 3){
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_4,0);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_5,0);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_6,0);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_7,1);
+		}
+		
+		if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_1) && i == 0){ //s14
+			if(mode == 4){
+				if(prevKey == 14 && passedTimeKey != 1){ //stay here
+					keyboardCounter = !keyboardCounter;
+					override = 1;
+				}
+				else{
+					prevKey = 14;
+					keyboardCounter = 0;
+					override = 0;
+				}
+				passedTimeKey = 0;
+				oneAndHalfSecond = 0;
+				printKeyboardData(3,0,keyboardCounter,override);
+			}
+			while(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_1)){
+				if(mode == 2){
+					HAL_Delay(5);
+					TIM3_IRQHandler();
+				}
+			}
+			HAL_Delay(20);
+		}
+		if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_1) && i == 1){ //s10
+			if(mode == 4){
+				if(prevKey == 10 && passedTimeKey != 1){ //stay here
+					keyboardCounter = (keyboardCounter+1)%5;
+					override = 1;
+				}
+				else{
+					prevKey = 10;
+					keyboardCounter = 0;
+					override = 0;
+				}
+				passedTimeKey = 0;
+				oneAndHalfSecond = 0;
+				printKeyboardData(2,0,keyboardCounter,override);
+			}
+			while(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_1)){
+				if(mode == 2){
+					HAL_Delay(5);
+					TIM3_IRQHandler();
+				}
+			}
+			HAL_Delay(20);
+			
+		}
+		if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_1) && i == 2){ //s6
+			if(mode == 4){
+				if(prevKey == 6 && passedTimeKey != 1){ //stay here
+					keyboardCounter = (keyboardCounter+1)%4;
+					override = 1;
+				}
+				else{
+					prevKey = 6;
+					keyboardCounter = 0;
+					override = 0;
+				}
+				passedTimeKey = 0;
+				oneAndHalfSecond = 0;
+				printKeyboardData(1,0,keyboardCounter,override);
+			}
+			while(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_1)){
+				if(mode == 2){
+					HAL_Delay(5);
+					TIM3_IRQHandler();
+				}
+			}
+			HAL_Delay(20);
+			
+		}
+		if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_1) && i == 3){ //s2
+			if(mode == 4){
+				if(prevKey == 2  && passedTimeKey != 1){ //stay here
+					keyboardCounter = 0;
+					override = 1;
+				}
+				else{
+					prevKey = 2;
+					keyboardCounter = 0;
+					override = 0;
+				}
+				passedTimeKey = 0;
+				oneAndHalfSecond = 0;
+				printKeyboardData(0,0,keyboardCounter,override);
+			}
+			while(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_1));
+			HAL_Delay(20);
+		}
+		
+		HAL_GPIO_WritePin(GPIOD,GPIO_PIN_4,1);
+		HAL_GPIO_WritePin(GPIOD,GPIO_PIN_5,1);
+		HAL_GPIO_WritePin(GPIOD,GPIO_PIN_6,1);
+		HAL_GPIO_WritePin(GPIOD,GPIO_PIN_7,1);
+		
+	}
   /* USER CODE END EXTI1_IRQn 0 */
   HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_1);
   /* USER CODE BEGIN EXTI1_IRQn 1 */
@@ -342,12 +475,272 @@ void EXTI1_IRQHandler(void)
 }
 
 /**
+* @brief This function handles EXTI line2 and Touch Sense controller.
+*/
+void EXTI2_TSC_IRQHandler(void)
+{
+  /* USER CODE BEGIN EXTI2_TSC_IRQn 0 */
+		for(int i = 0; i < 4; i++){
+		if(i == 0){
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_4,1);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_5,0);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_6,0);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_7,0);		
+		}
+		else if(i == 1){
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_4,0);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_5,1);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_6,0);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_7,0);
+		}
+		else if(i == 2){
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_4,0);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_5,0);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_6,1);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_7,0);	
+		}
+		else if(i == 3){
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_4,0);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_5,0);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_6,0);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_7,1);
+		}
+		
+		if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_2) && i == 0){ //s15
+			if(mode == 4){
+				if(prevKey == 15 && passedTimeKey != 1){ //stay here
+					keyboardCounter = !keyboardCounter;
+					override = 1;
+				}
+				else{
+					prevKey = 15;
+					keyboardCounter = 0;
+					override = 0;
+				}
+				passedTimeKey = 0;
+				oneAndHalfSecond = 0;
+				printKeyboardData(3,1,keyboardCounter,override);
+			}
+			while(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_2)){
+				if(mode == 2){
+					HAL_Delay(5);
+					TIM3_IRQHandler();
+				}
+			}
+			HAL_Delay(20);
+		}
+		if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_2) && i == 1){ //s11
+			if(mode == 4){
+				if(prevKey == 11 && passedTimeKey != 1){ //stay here
+					keyboardCounter = (keyboardCounter+1)%4;
+					override = 1;
+				}
+				else{
+					prevKey = 11;
+					keyboardCounter = 0;
+					override = 0;
+				}
+				passedTimeKey = 0;
+				oneAndHalfSecond = 0;
+				printKeyboardData(2,1,keyboardCounter,override);
+			}
+			while(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_2)){
+				if(mode == 2){
+					HAL_Delay(5);
+					TIM3_IRQHandler();
+				}
+			}
+			HAL_Delay(20);
+			
+		}
+		if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_2) && i == 2){ //s7
+			if(mode == 4){
+				if(prevKey == 7 && passedTimeKey != 1){ //stay here
+					keyboardCounter = (keyboardCounter+1)%4;
+					override = 1;
+				}
+				else{
+					prevKey = 7;
+					keyboardCounter = 0;
+					override = 0;
+				}
+				passedTimeKey = 0;
+				oneAndHalfSecond = 0;
+				printKeyboardData(1,1,keyboardCounter,override);
+			}
+			while(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_2)){
+				if(mode == 2){
+					HAL_Delay(5);
+					TIM3_IRQHandler();
+				}
+			}
+			HAL_Delay(20);
+			
+		}
+		if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_2) && i == 3){ //s3
+			if(mode == 4){
+				if(prevKey == 3 && passedTimeKey != 1){ //stay here
+					keyboardCounter = (keyboardCounter+1)%4;
+					override = 1;
+				}
+				else{
+					prevKey = 3;
+					keyboardCounter = 0;
+					override = 0;
+				}
+				passedTimeKey = 0;
+				oneAndHalfSecond = 0;
+				printKeyboardData(0,1,keyboardCounter,override);
+			}
+			while(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_2));
+			HAL_Delay(20);
+		}
+		
+		HAL_GPIO_WritePin(GPIOD,GPIO_PIN_4,1);
+		HAL_GPIO_WritePin(GPIOD,GPIO_PIN_5,1);
+		HAL_GPIO_WritePin(GPIOD,GPIO_PIN_6,1);
+		HAL_GPIO_WritePin(GPIOD,GPIO_PIN_7,1);
+		
+	}
+  /* USER CODE END EXTI2_TSC_IRQn 0 */
+  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_2);
+  /* USER CODE BEGIN EXTI2_TSC_IRQn 1 */
+
+  /* USER CODE END EXTI2_TSC_IRQn 1 */
+}
+
+/**
 * @brief This function handles EXTI line4 interrupt.
 */
 void EXTI4_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI4_IRQn 0 */
-
+	for(int i = 0; i < 4; i++){
+		if(i == 0){
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_4,1);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_5,0);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_6,0);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_7,0);		
+		}
+		else if(i == 1){
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_4,0);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_5,1);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_6,0);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_7,0);
+		}
+		else if(i == 2){
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_4,0);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_5,0);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_6,1);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_7,0);	
+		}
+		else if(i == 3){
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_4,0);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_5,0);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_6,0);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_7,1);
+		}
+		
+		if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_4) && i == 0){ //s16
+			if(mode == 2){
+				mode = 4; ///to get the name to save
+				chmode = 1;
+			}
+			else if(mode == 4){
+				if(prevKey == 16 && passedTimeKey != 1){ //stay here
+					keyboardCounter = 0;
+					override = 1;
+				}
+				else{
+					prevKey = 16;
+					keyboardCounter = 0;
+					override = 0;
+				}
+				passedTimeKey = 0;
+				oneAndHalfSecond = 0;
+				printKeyboardData(3,2,keyboardCounter,override);
+			}
+			while(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_4)){
+				if(mode == 2){
+					HAL_Delay(5);
+					TIM3_IRQHandler();
+				}
+			}
+			HAL_Delay(20);
+		}
+		if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_4) && i == 1){ //s12
+			if(mode == 4){
+				if(prevKey == 12 && passedTimeKey != 1){ //stay here
+					keyboardCounter = (keyboardCounter+1)%5;
+					override = 1;
+				}
+				else{
+					prevKey = 12;
+					keyboardCounter = 0;
+					override = 0;
+				}
+				passedTimeKey = 0;
+				oneAndHalfSecond = 0;
+				printKeyboardData(2,2,keyboardCounter,override);
+			}
+			while(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_4)){
+				if(mode == 2){
+					HAL_Delay(5);
+					TIM3_IRQHandler();
+				}
+			}
+			HAL_Delay(20);
+			
+		}
+		if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_4) && i == 2){ //s8
+			if(mode == 4){
+				if(prevKey == 8 && passedTimeKey != 1){ //stay here
+					keyboardCounter = (keyboardCounter+1)%4;
+					override = 1;
+				}
+				else{
+					prevKey = 8;
+					keyboardCounter = 0;
+					override = 0;
+				}
+				passedTimeKey = 0;
+				oneAndHalfSecond = 0;
+				printKeyboardData(1,2,keyboardCounter,override);
+			}
+			while(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_4)){
+				if(mode == 2){
+					HAL_Delay(5);
+					TIM3_IRQHandler();
+				}
+			}
+			HAL_Delay(20);
+			
+		}
+		if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_4) && i == 3){ //s4
+			if(mode == 4){
+				if(prevKey == 4 && passedTimeKey != 1){ //stay here
+					keyboardCounter = (keyboardCounter+1)%4;
+					override = 1;
+				}
+				else{
+					prevKey = 4;
+					keyboardCounter = 0;
+					override = 0;
+				}
+				passedTimeKey = 0;
+				oneAndHalfSecond = 0;
+				printKeyboardData(0,2,keyboardCounter,override);
+			}
+			while(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_4));
+			HAL_Delay(20);
+		}
+		
+		HAL_GPIO_WritePin(GPIOD,GPIO_PIN_4,1);
+		HAL_GPIO_WritePin(GPIOD,GPIO_PIN_5,1);
+		HAL_GPIO_WritePin(GPIOD,GPIO_PIN_6,1);
+		HAL_GPIO_WritePin(GPIOD,GPIO_PIN_7,1);
+		
+	}
   /* USER CODE END EXTI4_IRQn 0 */
   HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_4);
   /* USER CODE BEGIN EXTI4_IRQn 1 */
@@ -406,6 +799,7 @@ void TIM2_IRQHandler(void)
 		HAL_GPIO_WritePin(GPIOD,GPIO_PIN_5,1);
 		HAL_GPIO_WritePin(GPIOD,GPIO_PIN_6,1);
 		HAL_GPIO_WritePin(GPIOD,GPIO_PIN_7,1);
+		
 		initZombies();
 		
 		timerFlag=1;
@@ -418,6 +812,10 @@ void TIM2_IRQHandler(void)
 				cursor_y = 0;
 				symb[0][0] = 43;
 				limity = 2;
+				menuInit();
+			break;
+			case 4:
+				getName();
 			break;
 			case 5:
 				loseInit();
@@ -433,7 +831,7 @@ void TIM2_IRQHandler(void)
 		showPrologue();
 	}
 	else if (mode == 1){ //Menu
-		menuInit();
+		
 		if(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_0)){
 			cursor_x = 0;
 			cursor_y = 0;
@@ -455,7 +853,7 @@ void TIM2_IRQHandler(void)
 	else if(mode == 3){ // LoadGame
 		
 	}
-	if(mode != 0 && mode != 5 && mode != 6)
+	if(mode != 0 && mode != 5 && mode != 6 && mode != 4)
 		blinking();
 		
   /* USER CODE END TIM2_IRQn 0 */
@@ -472,7 +870,6 @@ void TIM3_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM3_IRQn 0 */
  
-	
 		reverse_count(gameTime,d4,d3,d2,d1);
 		if(d1 == 0){
 			d1 = 1;
@@ -512,11 +909,33 @@ void TIM3_IRQHandler(void)
 		}
 	}
 	
+	if(mode == 4){
+		oneAndHalfSecond++;
+		if(oneAndHalfSecond == 350){
+			passedTimeKey = 1;
+			oneSecond = 0;
+		}
+	}
+	
   /* USER CODE END TIM3_IRQn 0 */
   HAL_TIM_IRQHandler(&htim3);
   /* USER CODE BEGIN TIM3_IRQn 1 */
 	HAL_TIM_Base_Start_IT(&htim3);
   /* USER CODE END TIM3_IRQn 1 */
+}
+
+/**
+* @brief This function handles USART2 global interrupt / USART2 wake-up interrupt through EXTI line 26.
+*/
+void USART2_IRQHandler(void)
+{
+  /* USER CODE BEGIN USART2_IRQn 0 */
+
+  /* USER CODE END USART2_IRQn 0 */
+  HAL_UART_IRQHandler(&huart2);
+  /* USER CODE BEGIN USART2_IRQn 1 */
+
+  /* USER CODE END USART2_IRQn 1 */
 }
 
 /**
