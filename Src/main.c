@@ -64,7 +64,17 @@ PCD_HandleTypeDef hpcd_USB_FS;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
-
+#ifdef __GNUC__
+	#define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
+#else
+	#define PUTCHAR_PROTOTYPE int fputc(int ch, FILE *f)
+#endif
+	
+PUTCHAR_PROTOTYPE
+{
+	HAL_UART_Transmit(&huart2, (uint8_t *)&ch, 1, 1000); // change &uart1 accordingly
+	return ch;
+}
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -112,10 +122,10 @@ int activeZombie = 0;
 int ascii = 43;
 int lastChance;
 int seed;
-int mode = 0; // 0 => prologue, 1 => menu, 2 => play
+int mode = 0; 
 char map[4][20];
-unsigned char name[8];
-int nameLen = 0;
+char name[100];
+int nameLen = -1;
 int symb[4][20];
 const int plantsEnergy[3] = {1,2,4};
 const int plantsCoolDown[3] = {4,8,10};
@@ -157,6 +167,7 @@ void showPrologue(){
 		write(7);
 		HAL_Delay(950);
 		clear();
+		
 }
 
 int blinkFlag = 0;
@@ -338,15 +349,19 @@ void getName(){
 }
 
 void printKeyboardData(int i, int j, int t, int o){
+	
 	if(o == 0){
 		setCursor(++cursor_x,2);
 //		strcat(name,&keyboard[i][j][t]);
-//		nameLen++;
+		
+		nameLen++;
 	}else{
 		setCursor(cursor_x,2);
-		name[nameLen] = keyboard[i][j][t];
+//		name[nameLen] = keyboard[i][j][t];
 	}
+	*(name + nameLen) = keyboard[i][j][t];
 	write(keyboard[i][j][t]);
+	
 }
 
 void moduleBlinking(){
