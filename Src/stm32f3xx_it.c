@@ -57,7 +57,11 @@ extern int ascii;
 extern int symb[4][20];
 extern int chance;
 extern int level;
+extern unsigned char dd;
+extern unsigned char buffer[100];
+extern int pos;
 int tempx, tempy;
+int uartrec = 0;
 extern int seed;
 extern int nameLen;
 extern RTC_TimeTypeDef t;
@@ -827,13 +831,15 @@ void TIM2_IRQHandler(void)
 				symb[i][j] = -1;
 			}
 		}
-	
+		
 		///start ADCS
 		HAL_ADC_Start_IT(&hadc1);
 		HAL_ADC_Start_IT(&hadc2);
 		HAL_ADC_Start_IT(&hadc3);
 		
 		HAL_TIM_Base_Start_IT(&htim3);
+		
+		HAL_UART_Receive_IT(&huart2, &dd, sizeof(unsigned char));
 		
 		///start keypad
 		HAL_GPIO_WritePin(GPIOD,GPIO_PIN_4,1);
@@ -927,7 +933,7 @@ void TIM3_IRQHandler(void)
 			d4 = 1;
 			d1 = 0;
 		}
-	if(mode == 2 || mode == 3){
+	if(mode == 2 || mode == 3 || uartrec == 1){
 		oneSecond++;
 		if(gameTime != 160 && oneSecond == 200){
 			gameTime++;
@@ -974,7 +980,35 @@ void USART2_IRQHandler(void)
   /* USER CODE END USART2_IRQn 0 */
   HAL_UART_IRQHandler(&huart2);
   /* USER CODE BEGIN USART2_IRQn 1 */
+	if (dd != 0x0D){
+			buffer[pos] = dd;
+			pos++;
+			buffer[pos] = '\0';
+		}
+		else{
+			pos = 0; 
+//			HAL_UART_Transmit(&huart2,buffer,sizeof(unsigned char)*16,1000);
+				
+			int pointer = 0;
+			int i = 0;
+			int index[3]={0,0,0};
+			while(buffer[pointer] != '\0'){
+				if(buffer[pointer] == '*'){
+					index[i++] = pointer;
+				}
+				pointer++;
+			}
 
+			chance = buffer[index[0]+1] - '0';
+			gameTime = 0;
+			for(int i = index[1]+1; i < index[2];i++){
+				int a = buffer[i] - '0';
+				gameTime = gameTime * 10 +a;
+			}
+
+			
+		}
+	HAL_UART_Receive_IT(&huart2, &dd, sizeof(unsigned char));
   /* USER CODE END USART2_IRQn 1 */
 }
 

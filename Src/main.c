@@ -134,6 +134,9 @@ int plantsNumber = 0;
 int level = 1;
 int chance = 5;
 int plantsType = 0;
+unsigned char dd = '1';
+unsigned char buffer[100] = "";
+int pos = 0;
 char keyboard[4][3][5] =
     {
     {{'1',' ', ' ', ' ', ' '},{'2','a','b','c',' '},{'3','d','e','f',' '}}
@@ -189,24 +192,24 @@ void blinking(){
 }
 
 void createSaveData(){
-	strcat(name,"\n");
+	strcat(name,"*");
 	char temp[50];
 	
 	sprintf(temp,"%d",chance);
 	strcat(name,temp);
-	strcat(name,"\n");
+	strcat(name,"*");
 	
 	strcpy(temp," ");
 	
 	sprintf(temp,"%d",gameTime);
 	strcat(name,temp);
-	strcat(name,"\n");
+	strcat(name,"*");
 	
 	strcpy(temp," ");
 	
 	sprintf(temp,"%d",level);
 	strcat(name,temp);
-	strcat(name,"\n");
+	strcat(name,"*");
 	
 	strcpy(temp," ");
 	
@@ -224,17 +227,16 @@ void createSaveData(){
 	
 	sprintf(temp,"%d",lastPlant[2]);
 	strcat(name,temp);
-	strcat(name,"\n");
+	strcat(name,"*");
 	
 	strcpy(temp," ");
 	
 	sprintf(temp,"%d",level * (gameTime * 2 - lastChance));
 	strcat(name,temp);
-	strcat(name,"\n");
+	strcat(name,"*");
 	
 	strcpy(temp," ");
 	
-	/////////////////////////////////////////////////////////////////symb
 	for(int i = 0; i < 4; i++){
 		for(int j = 0; j < 20; j++){
 			if(symb[i][j] != -1){
@@ -255,8 +257,7 @@ void createSaveData(){
 		}
 		strcpy(temp," ");
 	}
-	strcat(name,"\n");
-	strcpy(temp," ");
+	strcat(name,"*");
 	
 }
 
