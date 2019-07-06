@@ -83,6 +83,8 @@ extern void loseInit();
 extern void winInit();
 extern void getName();
 extern void printKeyboardData(int i, int j, int t, int o);
+extern void createSaveData();
+
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
@@ -280,11 +282,9 @@ void EXTI0_IRQHandler(void)
 				updateCursor(0,1);
 			}
 			else if(mode == 4){
-//				*name = 'S';
-				HAL_UART_Transmit(&huart2,name,sizeof(unsigned char)*16,1000);
-//				*name = 'S';
-//				printf("%s",name);
-//				HAL_Delay(500);
+				createSaveData();
+//				HAL_UART_Transmit(&huart2,name,sizeof(unsigned char)*16,1000);
+				printf(name);
 				cursor_x = tempx;
 				cursor_y = tempy;
 				mode = 2;
@@ -663,7 +663,10 @@ void EXTI4_IRQHandler(void)
 		if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_4) && i == 0){ //s16
 			if(mode == 2){
 				mode = 4; ///to get the name to save
-				strcpy(name," ");
+				for(int i = 0; i < 100; i++){
+					*(name + i) = '\0';
+				}
+				
 				nameLen = -1;
 				chmode = 1;
 				tempx = cursor_x;

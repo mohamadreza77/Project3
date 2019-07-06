@@ -124,7 +124,7 @@ int lastChance;
 int seed;
 int mode = 0; 
 char map[4][20];
-char name[100];
+char name[5000];
 int nameLen = -1;
 int symb[4][20];
 const int plantsEnergy[3] = {1,2,4};
@@ -188,6 +188,78 @@ void blinking(){
 	}
 }
 
+void createSaveData(){
+	strcat(name,"\n");
+	char temp[50];
+	
+	sprintf(temp,"%d",chance);
+	strcat(name,temp);
+	strcat(name,"\n");
+	
+	strcpy(temp," ");
+	
+	sprintf(temp,"%d",gameTime);
+	strcat(name,temp);
+	strcat(name,"\n");
+	
+	strcpy(temp," ");
+	
+	sprintf(temp,"%d",level);
+	strcat(name,temp);
+	strcat(name,"\n");
+	
+	strcpy(temp," ");
+	
+	sprintf(temp,"%d",lastPlant[0]);
+	strcat(name,temp);
+	strcat(name," ");
+	
+	strcpy(temp," ");
+	
+	sprintf(temp,"%d",lastPlant[1]);
+	strcat(name,temp);
+	strcat(name," ");
+	
+	strcpy(temp," ");
+	
+	sprintf(temp,"%d",lastPlant[2]);
+	strcat(name,temp);
+	strcat(name,"\n");
+	
+	strcpy(temp," ");
+	
+	sprintf(temp,"%d",level * (gameTime * 2 - lastChance));
+	strcat(name,temp);
+	strcat(name,"\n");
+	
+	strcpy(temp," ");
+	
+	/////////////////////////////////////////////////////////////////symb
+	for(int i = 0; i < 4; i++){
+		for(int j = 0; j < 20; j++){
+			if(symb[i][j] != -1){
+				sprintf(temp,"%d",i);
+				strcat(name,temp);
+				strcat(name,":");
+				sprintf(temp,"%d",j);
+				strcat(name,temp);
+				strcat(name," ");
+				
+				sprintf(temp,"%d",symb[i][j]);
+				strcat(name,temp);
+				strcat(name," ");
+				sprintf(temp,"%d",map[i][j]);
+				strcat(name,temp);
+				strcat(name," ");
+			}
+		}
+		strcpy(temp," ");
+	}
+	strcat(name,"\n");
+	strcpy(temp," ");
+	
+}
+
 void updateCursor(int difX, int difY){
 	if(map[cursor_x][cursor_y] == 0)
 		symb[cursor_x][cursor_y] = 160;
@@ -242,7 +314,7 @@ void moveZombie(int i){
 			symb[3][zombies[i].y] = 160;
 			activeZombie--;
 		}else{
-			map[zombies[i].x][zombies[i].y] = -zombies[i].power;
+			map[zombies[i].x][zombies[i].y] = zombies[i].power;
 			symb[zombies[i].x][zombies[i].y] = zombies[i].type;
 		}
 		
@@ -321,7 +393,7 @@ void toPlant(){
 					cursor_x != 0 && 
 					gameTime - lastPlant[plantsType-1] > plantsCoolDown[plantsType-1]
 				){
-				map[cursor_x][cursor_y] = ascii;
+				map[cursor_x][cursor_y] = plantsEnergy[ascii-1] ;
 				symb[cursor_x][cursor_y] = ascii;
 				plantsNumber++;
 				lastPlant[plantsType-1] = gameTime;
