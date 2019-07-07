@@ -120,9 +120,10 @@ int zombieSpeed = 5;
 int maxZombie = 5;
 int activeZombie = 0;
 int ascii = 43;
-int lastChance;
+int lastChance = 0;
 int seed;
-int mode = 0; 
+int mode = 0;
+
 char map[4][20];
 char name[5000];
 int nameLen = -1;
@@ -135,7 +136,7 @@ int level = 1;
 int chance = 5;
 int plantsType = 0;
 unsigned char dd = '1';
-unsigned char buffer[100] = "";
+unsigned char buffer[1000] = "";
 int pos = 0;
 char keyboard[4][3][5] =
     {
@@ -145,6 +146,15 @@ char keyboard[4][3][5] =
     ,{{'*','+',' ',' ',' '},{'0',' ',' ',' ',' '},{'#',' ',' ',' ',' '}}
     };
 
+void printer(int p){
+	char s[10];
+	sprintf(s,"%d",p);
+	setCursor(cursor_x,cursor_y);
+	print(s);
+	cursor_x+=3;
+	cursor_y++;
+}	
+	
 void showPrologue(){
 		HAL_Delay(100);
 		setCursor(7,0);
@@ -215,13 +225,13 @@ void createSaveData(){
 	
 	sprintf(temp,"%d",lastPlant[0]);
 	strcat(name,temp);
-	strcat(name," ");
+	strcat(name,"*");
 	
 	strcpy(temp," ");
 	
 	sprintf(temp,"%d",lastPlant[1]);
 	strcat(name,temp);
-	strcat(name," ");
+	strcat(name,"*");
 	
 	strcpy(temp," ");
 	
@@ -237,22 +247,42 @@ void createSaveData(){
 	
 	strcpy(temp," ");
 	
+	sprintf(temp,"%d",activeZombie);
+	strcat(name,temp);
+	strcat(name,"*");
+	
+	strcpy(temp," ");
+	
+	sprintf(temp,"%d",plantsNumber);
+	strcat(name,temp);
+	strcat(name,"*");
+	
+	strcpy(temp," ");
+	
 	for(int i = 0; i < 4; i++){
 		for(int j = 0; j < 20; j++){
-			if(symb[i][j] != -1){
+			if(symb[i][j] != -1 && map[i][j] != 0){
 				sprintf(temp,"%d",i);
 				strcat(name,temp);
 				strcat(name,":");
 				sprintf(temp,"%d",j);
 				strcat(name,temp);
-				strcat(name," ");
+				strcat(name,"-");
 				
 				sprintf(temp,"%d",symb[i][j]);
 				strcat(name,temp);
-				strcat(name," ");
+				strcat(name,"-");
 				sprintf(temp,"%d",map[i][j]);
 				strcat(name,temp);
-				strcat(name," ");
+				strcat(name,"-");
+				
+				for(int k = 0; k < activeZombie; k++){
+					if(zombies[k].x == i && zombies[k].y == j){
+						sprintf(temp,"%d",zombies[k].time);
+						strcat(name,temp);
+						strcat(name,"-");
+					}
+				}
 			}
 		}
 		strcpy(temp," ");
@@ -276,10 +306,18 @@ void updateCursor(int difX, int difY){
 }
 
 
+void fillTheZ(int co, int x,int y, int type, int power, int time){
+	zombies[co].x = x; 
+	zombies[co].y = y; 
+	zombies[co].type = type; 
+	zombies[co].power = power; 
+	zombies[co].time = time;
+	zombies[co].alive = 1;
+}
+
 int collision(i){
-	int res;
 	if(zombies[i].x == 3) return 0;
-	if(map[zombies[i].x + 1][zombies[i].y] > 0){
+	if(symb[zombies[i].x + 1][zombies[i].y] < 4 && symb[zombies[i].x + 1][zombies[i].y] > 0){
 			zombies[i].power--;
 			map[zombies[i].x + 1][zombies[i].y]--;
 			if(zombies[i].power == 0){
@@ -291,8 +329,9 @@ int collision(i){
 				symb[zombies[i].x + 1][zombies[i].y] = 160;
 				plantsNumber--;
 			}
+			return 1;
 	}
-	else if(map[zombies[i].x + 1][zombies[i].y] < 0)
+	else if(symb[zombies[i].x + 1][zombies[i].y] > 3 && symb[zombies[i].x + 1][zombies[i].y] < 8)
 		return 1;
 	else
 		return 0;
@@ -306,11 +345,16 @@ void moveZombie(int i){
 			map[zombies[i].x][zombies[i].y] = 0;
 			symb[zombies[i].x][zombies[i].y] = 160;
 		}
+		
 		zombies[i].x++;
+		
+		if(zombies[i].x == 0){
+			activeZombie++;
+		}
 		
 		if(zombies[i].x == 4){
 			chance--;
-			if(chance == 1) lastChance = gameTime;
+			lastChance = gameTime;
 			zombies[i].alive = -1;
 			symb[3][zombies[i].y] = 160;
 			activeZombie--;
@@ -344,7 +388,7 @@ void zombieCreator(){
 		zombies[i].power = zombiesEnergy[zombies[i].type];
 		zombies[i].type += 4;
 		zombies[i].alive = 1;
-		activeZombie++;
+		
 	}
 }
 

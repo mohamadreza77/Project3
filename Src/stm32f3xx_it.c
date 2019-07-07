@@ -53,15 +53,18 @@ int  passedTimeKey = 0;
 extern char name[8];
 extern int mode; // 0 => prologue, 1 => menu, 2 => play
 extern int plantsType;
+extern int lastPlant[3];
 extern int ascii;
 extern int symb[4][20];
+extern char map[4][20];
 extern int chance;
 extern int level;
+extern int activeZombie;
 extern unsigned char dd;
-extern unsigned char buffer[100];
+extern unsigned char buffer[1000];
 extern int pos;
+extern int plantsNumber;
 int tempx, tempy;
-int uartrec = 0;
 extern int seed;
 extern int nameLen;
 extern RTC_TimeTypeDef t;
@@ -73,7 +76,7 @@ extern int cursor_x;
 extern int cursor_y;
 extern char* cursor_sign;
 ////////////////////////////////////////CURSOR/////////////////////////////////////////
-
+extern void printer(int p);
 extern void blinking();
 extern void updateCursor(int difX, int difY);
 extern void menuInit();
@@ -88,7 +91,7 @@ extern void winInit();
 extern void getName();
 extern void printKeyboardData(int i, int j, int t, int o);
 extern void createSaveData();
-
+extern void fillTheZ(int co, int x,int y, int type, int power, int time);///counter,x,y,type,power,time
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
@@ -289,6 +292,7 @@ void EXTI0_IRQHandler(void)
 				createSaveData();
 //				HAL_UART_Transmit(&huart2,name,sizeof(unsigned char)*16,1000);
 				printf(name);
+				HAL_Delay(500);
 				cursor_x = tempx;
 				cursor_y = tempy;
 				mode = 2;
@@ -675,6 +679,7 @@ void EXTI4_IRQHandler(void)
 				chmode = 1;
 				tempx = cursor_x;
 				tempy = cursor_y;
+				HAL_Delay(300);
 			}
 			else if(mode == 4){
 				if(prevKey == 16 && passedTimeKey != 1){ //stay here
@@ -792,16 +797,7 @@ void ADC1_2_IRQHandler(void)
 	int x = HAL_ADC_GetValue(&hadc1);
 	x = x * 199/63;
 	if(mode == 2){
-		
 		updateCursor(x/10,0);
-//		HAL_GPIO_WritePin(GPIOE,GPIO_PIN_8,x > 10);
-//		HAL_GPIO_WritePin(GPIOE,GPIO_PIN_9,x > 20);
-//		HAL_GPIO_WritePin(GPIOE,GPIO_PIN_10,x > 30);
-//		HAL_GPIO_WritePin(GPIOE,GPIO_PIN_11,x > 40);
-//		HAL_GPIO_WritePin(GPIOE,GPIO_PIN_12,x > 50);
-//		HAL_GPIO_WritePin(GPIOE,GPIO_PIN_13,x > 60);
-//		HAL_GPIO_WritePin(GPIOE,GPIO_PIN_14,x > 70);
-//		HAL_GPIO_WritePin(GPIOE,GPIO_PIN_15,x > 80);
 	}
 	if(flagADC == 1){
 		seed = HAL_ADC_GetValue(&hadc2);
@@ -877,8 +873,8 @@ void TIM2_IRQHandler(void)
 		showPrologue();
 	}
 	else if (mode == 1){ //Menu
-		
-		if(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_0)){
+		/////////////////////////////////////////////////////////////////////////////////////////////////
+		if(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_0) && cursor_x == 0){ //to newGame
 			cursor_x = 0;
 			cursor_y = 0;
 			mode = 2;
@@ -886,19 +882,24 @@ void TIM2_IRQHandler(void)
 			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_8,1);
 			chmode = 1;
 		}
+		if(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_0) && cursor_x == 2){ // to go to About
+			
+		}
+		/////////////////////////////////////////////////////////////////////////////////////////////////
 	}
 	else if(mode == 2){ // NewGame
 		
-		if(chance == 0){
+		if(chance <= 0){
+			chance = 0;
 			chmode = 1;
 			mode = 5; //// lose
 		}
 		gameLogic();
 		
 	}
-	else if(mode == 3){ // LoadGame
-		
-	}
+//	else if(mode == 3){ // LoadGame
+//		
+//	}
 	if(mode != 0 && mode != 5 && mode != 6 && mode != 4)
 		blinking();
 		
@@ -933,11 +934,11 @@ void TIM3_IRQHandler(void)
 			d4 = 1;
 			d1 = 0;
 		}
-	if(mode == 2 || mode == 3 || uartrec == 1){
+	if(mode == 2 || mode == 3){
 		oneSecond++;
 		if(gameTime != 160 && oneSecond == 200){
 			gameTime++;
-			if(gameTime % 20 == 0){
+			if(gameTime % 20 == 0 && gameTime != 0){
 				level++;
 				HAL_GPIO_WritePin(GPIOE,GPIO_PIN_9,level > 1);
 				HAL_GPIO_WritePin(GPIOE,GPIO_PIN_10,level > 2);
@@ -985,29 +986,150 @@ void USART2_IRQHandler(void)
 			pos++;
 			buffer[pos] = '\0';
 		}
-		else{
+		else if(mode == 1 && cursor_x == 1){
+			
 			pos = 0; 
-//			HAL_UART_Transmit(&huart2,buffer,sizeof(unsigned char)*16,1000);
+	//		HAL_UART_Transmit(&huart2,buffer,sizeof(unsigned char)*1000,1000);
 				
 			int pointer = 0;
 			int i = 0;
-			int index[3]={0,0,0};
+			int index[11];
 			while(buffer[pointer] != '\0'){
 				if(buffer[pointer] == '*'){
-					index[i++] = pointer;
+					index[i] = pointer;
+					
+					i++;
 				}
 				pointer++;
 			}
-
+			
 			chance = buffer[index[0]+1] - '0';
 			gameTime = 0;
 			for(int i = index[1]+1; i < index[2];i++){
 				int a = buffer[i] - '0';
 				gameTime = gameTime * 10 +a;
 			}
+			/////////////////////////////////////////////////////////////////////////////////////////////////
+			level = buffer[index[2]+1] - '0';
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_8,1);
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_9,level > 1);
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_10,level > 2);
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_11,level > 3);
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_12,level > 4);
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_13,level > 5);
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_14,level > 6);
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_15,level > 7);
+			
+			lastPlant[0]=0;
+			int ii = 0;
+			int negsign = 0;
+			if(index[4] - index[3] == 4){
+				ii = index[3]+2;
+				negsign = 1;
+			}else
+				ii = index[3]+1;
+			
+			for(; ii < index[4];ii++){
+					int a = buffer[ii] - '0';
+					lastPlant[0] = lastPlant[0] * 10 +a;
+			}
+			if(negsign == 1){
+				lastPlant[0] = -lastPlant[0];
+			}
+//			char s[5];
+//			sprintf(s,"%d",lastPlant[0]);
+//			print(s);
+			
+			lastPlant[1]=0;
+			ii = 0;
+			negsign = 0;
+			if(index[5] - index[4] == 4){
+				ii = index[4]+2;
+				negsign = 1;
+			}else
+				ii = index[4]+1;
+			
+			for(; ii < index[5];ii++){
+					int a = buffer[ii] - '0';
+					lastPlant[1] = lastPlant[1] * 10 +a;
+			}
+			if(negsign == 1){
+				lastPlant[1] = -lastPlant[1];
+			}
+
+			lastPlant[2]=0;
+			ii = 0;
+			negsign = 0;
+			if(index[6] - index[5] == 4){
+				ii = index[5]+2;
+				negsign = 1;
+			}else
+				ii = index[5]+1;
+			
+			for(; ii < index[6];ii++){
+					int a = buffer[ii] - '0';
+					lastPlant[2] = lastPlant[2] * 10 +a;
+			}
+			if(negsign == 1){
+				lastPlant[2] = -lastPlant[2];
+			}
+			
+//			score = 0;
+//			for(int i = index[6]+1; i < index[7];i++){
+//				int a = buffer[i] - '0';
+//				score = score * 10 +a;
+//			}
+			
+			activeZombie=0;
+			for(int i = index[7]+1; i < index[8];i++){
+				int a = buffer[i] - '0';
+				activeZombie = activeZombie* 10 +a;
+			}
+			
+			plantsNumber= buffer[index[8]+1] - '0';
 
 			
+			int co = 0;
+			cursor_x = 0;
+			cursor_y = 0;
+			int yPos = 0;
+			int xPos = 0;
+			int symbPos = 0;
+			int mapPos = 0;
+			
+			for(int i = index[9]+1; i < index[10];){
+				yPos = 0;
+				xPos = buffer[i] - '0';///i
+				i+=2;
+				while(buffer[i] != '-'){
+					int aa = (buffer[i] - '0');
+					yPos = yPos*10 + aa;
+					i++;
+				}
+				i++;
+				symbPos = (buffer[i] - '0');///symb
+				i+=2;
+				mapPos = (buffer[i] - '0');///map
+				i+=2;
+				symb[xPos][yPos] = symbPos;
+				map[xPos][yPos] = mapPos;
+				
+				if(symb[xPos][yPos] > 3){ //it is zombie
+					int time = 0;
+					while(buffer[i] != '-'){
+						int aa = (buffer[i] - '0');
+						time = time * 10 + aa;
+						i++;
+					}
+					i++;
+					fillTheZ(co,xPos,yPos,symbPos,mapPos,time);///counter,x,y,type,power,time
+					co++;
+				}
+			}
+			chmode=1;
+			mode = 2;		
 		}
+		
 	HAL_UART_Receive_IT(&huart2, &dd, sizeof(unsigned char));
   /* USER CODE END USART2_IRQn 1 */
 }
