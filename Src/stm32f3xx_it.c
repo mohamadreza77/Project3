@@ -31,7 +31,7 @@
   ******************************************************************************
   */
 /* Includes ------------------------------------------------------------------*/
-#include "stm32f3xx_hal.h"
+#include "stm32f3xx_hal.h" 
 #include "stm32f3xx.h"
 #include "stm32f3xx_it.h"
 
@@ -70,11 +70,12 @@ extern int nameLen;
 extern RTC_TimeTypeDef t;
 extern RTC_HandleTypeDef hrtc;
 extern TIM_HandleTypeDef htim3;
-
 ////////////////////////////////////////CURSOR/////////////////////////////////////////
 extern int cursor_x;
 extern int cursor_y;
 extern char* cursor_sign;
+extern int gameStart;
+
 ////////////////////////////////////////CURSOR/////////////////////////////////////////
 extern void printer(int p);
 extern void blinking();
@@ -90,6 +91,7 @@ extern void loseInit();
 extern void winInit();
 extern void getName();
 extern void printKeyboardData(int i, int j, int t, int o);
+extern void bonusCreate();
 extern void createSaveData();
 extern void fillTheZ(int co, int x,int y, int type, int power, int time);///counter,x,y,type,power,time
 /* USER CODE END 0 */
@@ -292,12 +294,12 @@ void EXTI0_IRQHandler(void)
 				createSaveData();
 //				HAL_UART_Transmit(&huart2,name,sizeof(unsigned char)*16,1000);
 				printf(name);
+				memset(name, 0, 1000 * (sizeof name[0]) );
 				HAL_Delay(500);
 				cursor_x = tempx;
 				cursor_y = tempy;
 				mode = 2;
 				chmode = 1;
-				
 			}
 			while(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_0)){
 				if(mode == 2){
@@ -833,7 +835,6 @@ void TIM2_IRQHandler(void)
 		HAL_ADC_Start_IT(&hadc2);
 		HAL_ADC_Start_IT(&hadc3);
 		
-		HAL_TIM_Base_Start_IT(&htim3);
 		
 		HAL_UART_Receive_IT(&huart2, &dd, sizeof(unsigned char));
 		
@@ -856,6 +857,7 @@ void TIM2_IRQHandler(void)
 				symb[0][0] = 43;
 				limity = 2;
 				menuInit();
+				HAL_TIM_Base_Start_IT(&htim3);
 			break;
 			case 4:
 				getName();
@@ -895,13 +897,14 @@ void TIM2_IRQHandler(void)
 			mode = 5; //// lose
 		}
 		gameLogic();
+		bonusCreate();
 		
 	}
-//	else if(mode == 3){ // LoadGame
-//		
-//	}
+	
 	if(mode != 0 && mode != 5 && mode != 6 && mode != 4)
 		blinking();
+	
+
 		
   /* USER CODE END TIM2_IRQn 0 */
   HAL_TIM_IRQHandler(&htim2);
@@ -916,7 +919,16 @@ void TIM2_IRQHandler(void)
 void TIM3_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM3_IRQn 0 */
- 
+
+	if(mode == 4){
+		oneAndHalfSecond++;
+		if(oneAndHalfSecond == 350){
+			passedTimeKey = 1;
+			oneSecond = 0;
+		}
+	}
+		
+	if(gameStart){
 		reverse_count(gameTime,d4,d3,d2,d1);
 		if(d1 == 0){
 			d1 = 1;
@@ -934,36 +946,33 @@ void TIM3_IRQHandler(void)
 			d4 = 1;
 			d1 = 0;
 		}
-	if(mode == 2 || mode == 3){
-		oneSecond++;
-		if(gameTime != 160 && oneSecond == 200){
-			gameTime++;
-			if(gameTime % 20 == 0 && gameTime != 0){
-				level++;
-				HAL_GPIO_WritePin(GPIOE,GPIO_PIN_9,level > 1);
-				HAL_GPIO_WritePin(GPIOE,GPIO_PIN_10,level > 2);
-				HAL_GPIO_WritePin(GPIOE,GPIO_PIN_11,level > 3);
-				HAL_GPIO_WritePin(GPIOE,GPIO_PIN_12,level > 4);
-				HAL_GPIO_WritePin(GPIOE,GPIO_PIN_13,level > 5);
-				HAL_GPIO_WritePin(GPIOE,GPIO_PIN_14,level > 6);
-				HAL_GPIO_WritePin(GPIOE,GPIO_PIN_15,level > 7);
+		if(mode == 2 || mode == 3){
+			oneSecond++;
+			if(gameTime != 160 && oneSecond == 200){
+				gameTime++;
+				if(gameTime % 20 == 0 && gameTime != 0){
+					level++;
+					HAL_GPIO_WritePin(GPIOE,GPIO_PIN_9,level > 1);
+					HAL_GPIO_WritePin(GPIOE,GPIO_PIN_10,level > 2);
+					HAL_GPIO_WritePin(GPIOE,GPIO_PIN_11,level > 3);
+					HAL_GPIO_WritePin(GPIOE,GPIO_PIN_12,level > 4);
+					HAL_GPIO_WritePin(GPIOE,GPIO_PIN_13,level > 5);
+					HAL_GPIO_WritePin(GPIOE,GPIO_PIN_14,level > 6);
+					HAL_GPIO_WritePin(GPIOE,GPIO_PIN_15,level > 7);
+				}
+				oneSecond =0;
+				if(gameTime%2==0){
+					createSaveData();
+					printf(name);
+					memset(name, 0, 1000 * (sizeof name[0]) );
+				}
 			}
-			oneSecond =0;
-		}
-		if(gameTime == 160){
-			chmode = 1;
-			mode = 6; //win
-		}
-	}
-	
-	if(mode == 4){
-		oneAndHalfSecond++;
-		if(oneAndHalfSecond == 350){
-			passedTimeKey = 1;
-			oneSecond = 0;
+			if(gameTime == 160){
+				chmode = 1;
+				mode = 6; //win
+			}
 		}
 	}
-	
   /* USER CODE END TIM3_IRQn 0 */
   HAL_TIM_IRQHandler(&htim3);
   /* USER CODE BEGIN TIM3_IRQn 1 */

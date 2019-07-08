@@ -106,6 +106,16 @@ int cursor_y = 0;
 char* cursor_sign;
 ////////////////////////////////////////CURSOR/////////////////////////////////////////
 
+struct Bonus{
+		int x;
+		int y;
+		int type;
+		int active;
+		int time;
+};
+
+struct Bonus bonus;
+
 struct Zombie{
 	int type;
 	int x;
@@ -123,7 +133,7 @@ int ascii = 43;
 int lastChance = 0;
 int seed;
 int mode = 0;
-
+int gameStart = 0;
 char map[4][20];
 char name[5000];
 int nameLen = -1;
@@ -135,6 +145,7 @@ int plantsNumber = 0;
 int level = 1;
 int chance = 5;
 int plantsType = 0;
+int scoreCounter = 0;
 unsigned char dd = '1';
 unsigned char buffer[1000] = "";
 int pos = 0;
@@ -183,22 +194,30 @@ void showPrologue(){
 		
 }
 
-int blinkFlag = 0;
+int blinkFlag = 3;
 void blinking(){
-	for(int i = 0; i < 4; i++){
-		for(int j = 0; j < 20; j++){
-			if(symb[i][j] == -1) continue;
-			if(symb[i][j] == 160){
-				setCursor(j,i);
-				write(symb[i][j]);
-				symb[i][j] = -1;
-			}
-			else{
-					setCursor(j,i);
-					write(symb[i][j]);
-			}
-		}
-	}
+  for(int i = 0; i < 4; i++){
+    for(int j = 0; j < 20; j++){
+      if(symb[i][j] == -1) continue;
+      if(symb[i][j] == 160){
+        setCursor(j,i);
+        write(symb[i][j]);
+        symb[i][j] = -1;
+      }
+      else if(blinkFlag >= 0 && symb[i][j] == 43){
+          setCursor(j,i);
+          write(symb[i][j]);
+      }else if(blinkFlag < 0 && (symb[i][j] == 43 || (i == cursor_x && j == cursor_y)) ){
+            setCursor(j,i);
+            write(160);   
+      }else{
+          setCursor(j,i);
+          write(symb[i][j]);
+      }
+      blinkFlag--;
+      if(blinkFlag == -6) blinkFlag = 6;
+    }
+  }
 }
 
 void createSaveData(){
@@ -288,6 +307,7 @@ void createSaveData(){
 		strcpy(temp," ");
 	}
 	strcat(name,"*");
+	strcat(name,"?");
 	
 }
 
@@ -321,7 +341,7 @@ int collision(i){
 			zombies[i].power--;
 			map[zombies[i].x + 1][zombies[i].y]--;
 			if(zombies[i].power == 0){
-				zombies[i].alive = -1;
+				zombies[i].alive = !zombies[i].alive;
 				symb[zombies[i].x][zombies[i].y] = 160;
 				activeZombie--;
 			}
@@ -355,7 +375,7 @@ void moveZombie(int i){
 		if(zombies[i].x == 4){
 			chance--;
 			lastChance = gameTime;
-			zombies[i].alive = -1;
+			zombies[i].alive = !zombies[i].alive;
 			symb[3][zombies[i].y] = 160;
 			activeZombie--;
 		}else{
@@ -368,7 +388,7 @@ void moveZombie(int i){
 
 void initZombies(){
 	for(int i =0; i < maxZombie; i ++){
-		zombies[i].alive = -1;
+		zombies[i].alive = 0;
 	}
 }
 
@@ -376,7 +396,7 @@ void zombieCreator(){
 	if(activeZombie < maxZombie){
 		int i = 0;
 		for(; i < maxZombie; i ++){
-			if(zombies[i].alive == -1){
+			if(!zombies[i].alive){
 				break;
 			}
 		}
@@ -402,7 +422,7 @@ void menuInit(){
 	print("About");
 }
 void calScore(){
-	int score = level * (gameTime * 2 - lastChance);
+	int score = level * (gameTime * 2 - lastChance) + scoreCounter * 100;
 	char s[10];
 	sprintf(s,"%d",score);
 	setCursor(8,2);
@@ -425,33 +445,109 @@ void winInit(){
 	calScore();
 }
 
+void bonusCreate(){
+	if(!gameStart) return;
+	if(bonus.active && bonus.time - gameTime > 0) return;
+	if(bonus.active && gameTime - bonus.time >= 0 && gameTime - bonus.time < 4){
+		map[bonus.x][bonus.y] = 9;
+	  symb[bonus.x][bonus.y] = 0;
+		return;
+	}else if(bonus.active){
+		bonus.active = 0;
+		map[bonus.x][bonus.y] = 0;
+	  symb[bonus.x][bonus.y] = 160;
+		return;
+	}
+	
+	int x = rand() % 100;
+	if(x > 1) return;
+	bonus.x = rand() % 4;
+	bonus.y = rand() % 20;
+	bonus.active = 1;
+	bonus.type = rand() % 3;
+	bonus.time = gameTime + (rand()%5)+1;
+}
 
 void clearScreen(){
 	clear();
 }
-void toPlant(){
-	if(plantsNumber != 7){
-		if(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_0)){
-			if(
-					map[cursor_x][cursor_y] == 0 &&
-					plantsType != 0 && 
-					cursor_x != 0 && 
-					gameTime - lastPlant[plantsType-1] > plantsCoolDown[plantsType-1]
-				){
-				map[cursor_x][cursor_y] = plantsEnergy[ascii-1] ;
-				symb[cursor_x][cursor_y] = ascii;
-				plantsNumber++;
-				lastPlant[plantsType-1] = gameTime;
-			}
-			while(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_0));
+
+void deleteZombie(){
+	int maxX = -1;
+	int p = -1;
+	for(int i=0;i<5;i++){
+		if(!zombies[i].alive) continue;
+		if(zombies[i].x > maxX){
+			maxX = zombies[i].x;
+			p = i;
 		}
 	}
+	
+	if(p == -1) return;
+	
+	map[zombies[p].x][zombies[p].y] = 0;
+	symb[zombies[p].x][zombies[p].y] = 160;
+	zombies[p].alive = !zombies[p].alive;
+	
+}
+
+void enablePlant(){
+	
+	int p = -1;
+
+	for(int i=0;i<3;i++){
+		if(gameTime - lastPlant[i] < plantsCoolDown[i])
+			p = i;
+	}
+	if(p == -1) return;
+	lastPlant[p] = -11;
+}
+void toPlant(){
+	if(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_0)){
+		if(map[cursor_x][cursor_y] != 9){
+			if(plantsNumber != 7){
+				if(
+						map[cursor_x][cursor_y] == 0 &&
+						plantsType != 0 && 
+						cursor_x != 0 && 
+						(!gameStart || gameTime - lastPlant[plantsType-1] > plantsCoolDown[plantsType-1]) //remove cooldown when player has just begun
+					){
+					map[cursor_x][cursor_y] = plantsEnergy[ascii-1] ;
+					symb[cursor_x][cursor_y] = ascii;
+					plantsNumber++;
+					if(plantsNumber == 7)
+						gameStart = 1;
+					if(gameStart)
+						lastPlant[plantsType-1] = gameTime;
+				}
+				while(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_0));
+			}
+		}else{
+				switch(bonus.type){
+					case 0:
+						scoreCounter++;
+						break;
+					case 1:
+						deleteZombie();
+						break;
+					case 2:
+						enablePlant();
+						break;
+					
+					
+				}
+				bonus.active = 0;
+				map[bonus.x][bonus.y] = 0;
+				symb[bonus.x][bonus.y] = 160;
+			}
+		}
 }
 void gameLogic(){
 	toPlant();
+	if(!gameStart) return;
 	zombieCreator();
-	for(int i=0; i < maxZombie; i ++){
-		if(zombies[i].alive == 1){
+	for(int i=0; i < maxZombie; i++){
+		if(zombies[i].alive){
 				moveZombie(i);
 		}
 	}
@@ -550,17 +646,18 @@ void dec2bin(int n, int d4, int d3, int d2, int d1){
 
 int k =0;
 void reverse_count(int time,int d4, int d3, int d2, int d1){
-      int low = time % 10;
-      int mid = (time / 10) - 10;
-			if (mid < 0) mid = time / 10;
-			int hi = time / 100;
-			
-			int amount = chance;
-			if(k == 1) amount = hi;
-			else if(k == 2) amount = mid;
-			else if(k == 3) amount = low;
-			k = (k +1)%4;
-      dec2bin(amount,d4, d3, d2, d1);
+
+	int low = time % 10;
+	int mid = (time / 10) - 10;
+	if (mid < 0) mid = time / 10;
+	int hi = time / 100;
+	
+	int amount = chance;
+	if(k == 1) amount = hi;
+	else if(k == 2) amount = mid;
+	else if(k == 3) amount = low;
+	k = (k +1)%4;
+	dec2bin(amount,d4, d3, d2, d1);
 }
 
 void specialChar(){
@@ -625,13 +722,13 @@ void specialChar(){
   0x0A,
   0x11};
 	unsigned char bonus[8]={0x00,
+  0x0E,
+  0x11,
+  0x11,
+  0x06,
+  0x04,
   0x00,
-  0x15,
-  0x0E,
-  0x1F,
-  0x0E,
-  0x15,
-  0x00};
+  0x04};
 
 	createChar(0,bonus);
 	createChar(1,potato);
