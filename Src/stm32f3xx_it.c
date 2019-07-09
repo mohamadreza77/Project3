@@ -50,7 +50,8 @@ int keyboardCounter = 0;
 int oneAndHalfSecond = 0;
 int override = 0;
 int  passedTimeKey = 0;
-int x;
+//int x;
+int y;
 extern char name[8];
 extern int mode; // 0 => prologue, 1 => menu, 2 => play
 extern int plantsType;
@@ -89,7 +90,6 @@ extern void gameLogic();
 extern void showPrologue();
 extern void clearScreen();
 extern void reverse_count();
-extern void moduleBlinking();
 extern void initZombies();
 extern void loseInit();
 extern void winInit();
@@ -292,7 +292,7 @@ void EXTI0_IRQHandler(void)
 		
 		if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_0) && i == 0){ //s13
 			if(mode == 1 || mode == 2 || mode == 3){
-				updateCursor(x,1);
+				updateCursor(0,1);
 			}
 			else if(mode == 4){
 				createSaveData();
@@ -315,7 +315,7 @@ void EXTI0_IRQHandler(void)
 		}
 		if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_0) && i == 1){ //s9
 			if(mode == 1 || mode == 2 || mode == 3){
-				updateCursor(x,-1);
+				updateCursor(0,-1);
 			}
 			while(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_0)){
 				if(mode == 2){
@@ -800,9 +800,10 @@ void ADC1_2_IRQHandler(void)
 {
   /* USER CODE BEGIN ADC1_2_IRQn 0 */
 	
-	x = HAL_ADC_GetValue(&hadc1);
-	x = x * 199/63;
+	
 	if(mode == 2){
+		int x = HAL_ADC_GetValue(&hadc1);
+		x = x * 199/63;
 		updateCursor(x/10,0);
 	}
 	if(flagADC == 1){
@@ -834,6 +835,18 @@ void TIM2_IRQHandler(void)
 			}
 		}
 		
+		HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_1);
+		HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_2);
+		HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_3);
+		HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_4);
+		HAL_TIM_PWM_Start(&htim2,TIM_CHANNEL_1);
+		HAL_TIM_PWM_Start(&htim2,TIM_CHANNEL_2);
+		HAL_TIM_PWM_Start(&htim2,TIM_CHANNEL_3);
+		HAL_TIM_PWM_Start(&htim2,TIM_CHANNEL_4);
+		HAL_TIM_PWM_Start(&htim8,TIM_CHANNEL_1);
+		HAL_TIM_PWM_Start(&htim8,TIM_CHANNEL_2);
+		HAL_TIM_PWM_Start(&htim8,TIM_CHANNEL_3);
+		
 		///start ADCS
 		HAL_ADC_Start_IT(&hadc1);
 		HAL_ADC_Start_IT(&hadc2);
@@ -858,12 +871,23 @@ void TIM2_IRQHandler(void)
 		clearScreen();
 		switch (mode){
 			case 1:
+				__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_2,0);	
+				__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_1,0);
+				__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_1,0);
+				__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_2,0);
+				__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_2,0);	
+				__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_3,0);
+				__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_4,0);
+				__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_3,0);
+				__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_1,0);
+				__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_3,0);
+				__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_4,0);
 				cursor_x = 0;
 				cursor_y = 0;
 				symb[0][0] = 43;
 				limity = 2;
 				menuInit();
-				HAL_TIM_Base_Start_IT(&htim3);
+//				HAL_TIM_Base_Start_IT(&htim3);
 			break;
 			case 4:
 				getName();
@@ -883,11 +907,13 @@ void TIM2_IRQHandler(void)
 	else if (mode == 1){ //Menu
 		/////////////////////////////////////////////////////////////////////////////////////////////////
 		if(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_0) && cursor_x == 0){ //to newGame
+//			printer(2);
 			cursor_x = 0;
 			cursor_y = 0;
 			mode = 2;
 			limity = 3;
-			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_8,1);
+//			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_8,1);
+			__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_2,y); //////PE8 is set
 			chmode = 1;
 		}
 		if(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_0) && cursor_x == 2){ // to go to About
@@ -910,8 +936,6 @@ void TIM2_IRQHandler(void)
 	if(mode != 0 && mode != 5 && mode != 6 && mode != 4)
 		blinking();
 	
-
-		
   /* USER CODE END TIM2_IRQn 0 */
   HAL_TIM_IRQHandler(&htim2);
   /* USER CODE BEGIN TIM2_IRQn 1 */
@@ -962,13 +986,20 @@ void TIM3_IRQHandler(void)
 					maxZombie+=2;
 					zombieSpeed *= 0.8;
 					totalNumberOfZs = 5;
-					HAL_GPIO_WritePin(GPIOE,GPIO_PIN_9,level > 1);
-					HAL_GPIO_WritePin(GPIOE,GPIO_PIN_10,level > 2);
-					HAL_GPIO_WritePin(GPIOE,GPIO_PIN_11,level > 3);
-					HAL_GPIO_WritePin(GPIOE,GPIO_PIN_12,level > 4);
-					HAL_GPIO_WritePin(GPIOE,GPIO_PIN_13,level > 5);
-					HAL_GPIO_WritePin(GPIOE,GPIO_PIN_14,level > 6);
-					HAL_GPIO_WritePin(GPIOE,GPIO_PIN_15,level > 7);
+//					HAL_GPIO_WritePin(GPIOE,GPIO_PIN_9,level > 1);
+//					HAL_GPIO_WritePin(GPIOE,GPIO_PIN_10,level > 2);
+//					HAL_GPIO_WritePin(GPIOE,GPIO_PIN_11,level > 3);
+//					HAL_GPIO_WritePin(GPIOE,GPIO_PIN_12,level > 4);
+//					HAL_GPIO_WritePin(GPIOE,GPIO_PIN_13,level > 5);
+//					HAL_GPIO_WritePin(GPIOE,GPIO_PIN_14,level > 6);
+//					HAL_GPIO_WritePin(GPIOE,GPIO_PIN_15,level > 7);
+			__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_1,level > 1?y:0);
+			__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_1,level > 2?y:0);
+			__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_2,level > 3?y:0);
+			__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_2,level > 4?y:0);	
+			__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_3,level > 5?y:0);
+			__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_4,level > 6?y:0);
+			__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_3,level > 7?y:0);
 				}
 				oneSecond =0;
 				if(gameTime%2==0){
@@ -1030,14 +1061,22 @@ void USART2_IRQHandler(void)
 			}
 			/////////////////////////////////////////////////////////////////////////////////////////////////
 			level = buffer[index[2]+1] - '0';
-			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_8,1);
-			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_9,level > 1);
-			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_10,level > 2);
-			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_11,level > 3);
-			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_12,level > 4);
-			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_13,level > 5);
-			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_14,level > 6);
-			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_15,level > 7);
+//			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_8,1);
+//			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_9,level > 1);
+//			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_10,level > 2);
+//			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_11,level > 3);
+//			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_12,level > 4);
+//			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_13,level > 5);
+//			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_14,level > 6);
+//			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_15,level > 7);
+			__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_2,y);	
+			__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_1,level > 1?y:0);
+			__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_1,level > 2?y:0);
+			__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_2,level > 3?y:0);
+			__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_2,level > 4?y:0);	
+			__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_3,level > 5?y:0);
+			__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_4,level > 6?y:0);
+			__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_3,level > 7?y:0);
 			
 			lastPlant[0]=0;
 			int ii = 0;
@@ -1159,25 +1198,8 @@ void USART2_IRQHandler(void)
 void ADC3_IRQHandler(void)
 {
   /* USER CODE BEGIN ADC3_IRQn 0 */
-	if(mode != 2) return;
-	int y = HAL_ADC_GetValue(&hadc3)*8;
-//	char s[100];
-//	sprintf(s,"%d",y);
-//	print(s);
-//	print("/");
-//	__HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_1,y);
-//	__HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_2,y);
-//	__HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_3,y);
-//	
-//	__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_1 ,y);
-//	__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_2,y);
-//	__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_3,y);
-//	__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_4,y);
-//	
-//	__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_1 ,y);
-//	__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_2,y);
-//	__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_3,y);
-//	__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_1,y);
+	y = HAL_ADC_GetValue(&hadc3)*8;
+
   /* USER CODE END ADC3_IRQn 0 */
   HAL_ADC_IRQHandler(&hadc3);
   /* USER CODE BEGIN ADC3_IRQn 1 */

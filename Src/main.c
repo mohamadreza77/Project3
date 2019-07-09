@@ -104,6 +104,7 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 /* USER CODE BEGIN 0 */
 extern int limity;
 extern int gameTime;
+extern int y;
 ////////////////////////////////////////CURSOR/////////////////////////////////////////
 int cursor_x = 0;
 int cursor_y = 0;
@@ -171,33 +172,7 @@ void printer(int p){
 	cursor_y++;
 }	
 	
-void showPrologue(){
-		HAL_Delay(100);
-		setCursor(7,0);
-		print("Plants");
-		setCursor(9,1);
-		print("vs");
-		setCursor(6,2);
-		print("Zombies");
-		setCursor(6,3);
-		write(1);
-		setCursor(7,3);
-		write(2);
-		setCursor(8,3);
-		write(3);
-		
-		setCursor(10,3);
-		write(4);
-		setCursor(11,3);
-		write(5);
-		setCursor(12,3);
-		write(6);
-		setCursor(13,3);
-		write(7);
-		HAL_Delay(950);
-		clear();
-		
-}
+
 
 int blinkFlag = 3;
 void blinking(){
@@ -592,39 +567,6 @@ void printKeyboardData(int i, int j, int t, int o){
 	write(keyboard[i][j][t]);
 	
 }
-
-void moduleBlinking(){
-//	int y = 200;
-//	__HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_1,y);
-//	__HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_2,y);
-//	__HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_3,y);
-//	
-//	__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_1 ,y);
-//	__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_2,y);
-//	__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_3,y);
-//	__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_4,y);
-//	
-//	__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_1 ,y);
-//	__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_2,y);
-//	__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_3,y);
-//	__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_1,y);
-//	HAL_Delay(300);
-//	y = 0;
-//		__HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_1,y);
-//	__HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_2,y);
-//	__HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_3,y);
-//	
-//	__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_1 ,y);
-//	__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_2,y);
-//	__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_3,y);
-//	__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_4,y);
-//	
-//	__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_1 ,y);
-//	__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_2,y);
-//	__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_3,y);
-//	__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_1,y);
-//	HAL_Delay(100);
-}
 	
 void setPins(int binsDigit[], int d4, int d3, int d2, int d1){
 	
@@ -672,8 +614,66 @@ void reverse_count(int time,int d4, int d3, int d2, int d1){
 	if(k == 1) amount = hi;
 	else if(k == 2) amount = mid;
 	else if(k == 3) amount = low;
+	if(d1 == d2 && d2 == d3 && d3 == d4 && d4 == d1) amount = 0; 
 	k = (k +1)%4;
 	dec2bin(amount,d4, d3, d2, d1);
+}
+
+void showPrologue(){
+		HAL_Delay(300);
+
+		setCursor(7,0);
+		print("Plants");
+		setCursor(9,1);
+		print("vs");
+		setCursor(6,2);
+		print("Zombies");
+		setCursor(6,3);
+		write(1);
+		setCursor(7,3);
+		write(2);
+		setCursor(8,3);
+		write(3);
+		
+		setCursor(10,3);
+		write(4);
+		setCursor(11,3);
+		write(5);
+		setCursor(12,3);
+		write(6);
+		setCursor(13,3);
+		write(7);
+		__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_2,y);	
+		__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_1,y);
+		__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_1,y);
+		__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_2,y);
+		__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_2,y);	
+		__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_3,y);
+		__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_4,y);
+		__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_3,y);
+	
+		__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_1,y);
+		__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_3,y);
+		__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_4,y);
+		reverse_count(0,0,0,0,0);
+//		reverse_count(0,1,1,0,1);
+//		reverse_count(0,1,0,1,1);
+//		reverse_count(0,0,1,1,1);
+		HAL_Delay(700);
+		__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_2,0);	
+		__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_1,0);
+		__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_1,0);
+		__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_2,0);
+		__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_2,0);	
+		__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_3,0);
+		__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_4,0);
+		__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_3,0);
+		__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_1,0);
+		__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_3,0);
+		__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_4,0);
+		reverse_count(0,1,1,1,1);
+		clear();
+		
 }
 
 void specialChar(){
@@ -1099,7 +1099,7 @@ static void MX_TIM1_Init(void)
   TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig;
 
   htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 719;
+  htim1.Init.Prescaler = 179;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim1.Init.Period = 10000;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -1174,7 +1174,7 @@ static void MX_TIM2_Init(void)
   TIM_OC_InitTypeDef sConfigOC;
 
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 719;
+  htim2.Init.Prescaler = 179;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim2.Init.Period = 10000;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -1272,7 +1272,7 @@ static void MX_TIM8_Init(void)
   TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig;
 
   htim8.Instance = TIM8;
-  htim8.Init.Prescaler = 719;
+  htim8.Init.Prescaler = 179;
   htim8.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim8.Init.Period = 10000;
   htim8.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
