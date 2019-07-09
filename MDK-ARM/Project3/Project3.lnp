@@ -8,8 +8,6 @@
 "project3\stm32f3xx_hal_adc_ex.o"
 "project3\stm32f3xx_hal_i2c.o"
 "project3\stm32f3xx_hal_i2c_ex.o"
-"project3\stm32f3xx_hal_rtc.o"
-"project3\stm32f3xx_hal_rtc_ex.o"
 "project3\stm32f3xx_hal_spi.o"
 "project3\stm32f3xx_hal_spi_ex.o"
 "project3\stm32f3xx_hal_tim.o"

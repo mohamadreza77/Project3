@@ -31,7 +31,7 @@
   ******************************************************************************
   */
 /* Includes ------------------------------------------------------------------*/
-#include "stm32f3xx_hal.h" 
+#include "stm32f3xx_hal.h"
 #include "stm32f3xx.h"
 #include "stm32f3xx_it.h"
 
@@ -50,6 +50,7 @@ int keyboardCounter = 0;
 int oneAndHalfSecond = 0;
 int override = 0;
 int  passedTimeKey = 0;
+int x;
 extern char name[8];
 extern int mode; // 0 => prologue, 1 => menu, 2 => play
 extern int plantsType;
@@ -57,9 +58,12 @@ extern int lastPlant[3];
 extern int ascii;
 extern int symb[4][20];
 extern char map[4][20];
+extern int totalNumberOfZs;
 extern int chance;
 extern int level;
 extern int activeZombie;
+extern float zombieSpeed;
+extern int maxZombie;
 extern unsigned char dd;
 extern unsigned char buffer[1000];
 extern int pos;
@@ -67,9 +71,9 @@ extern int plantsNumber;
 int tempx, tempy;
 extern int seed;
 extern int nameLen;
-extern RTC_TimeTypeDef t;
-extern RTC_HandleTypeDef hrtc;
 extern TIM_HandleTypeDef htim3;
+extern TIM_HandleTypeDef htim1;
+extern TIM_HandleTypeDef htim8;
 ////////////////////////////////////////CURSOR/////////////////////////////////////////
 extern int cursor_x;
 extern int cursor_y;
@@ -103,7 +107,7 @@ extern ADC_HandleTypeDef hadc3;
 extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim3;
 extern UART_HandleTypeDef huart2;
-extern UART_HandleTypeDef huart2;
+
 /******************************************************************************/
 /*            Cortex-M4 Processor Interruption and Exception Handlers         */ 
 /******************************************************************************/
@@ -288,7 +292,7 @@ void EXTI0_IRQHandler(void)
 		
 		if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_0) && i == 0){ //s13
 			if(mode == 1 || mode == 2 || mode == 3){
-				updateCursor(0,1);
+				updateCursor(x,1);
 			}
 			else if(mode == 4){
 				createSaveData();
@@ -311,7 +315,7 @@ void EXTI0_IRQHandler(void)
 		}
 		if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_0) && i == 1){ //s9
 			if(mode == 1 || mode == 2 || mode == 3){
-				updateCursor(0,-1);
+				updateCursor(x,-1);
 			}
 			while(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_0)){
 				if(mode == 2){
@@ -796,7 +800,7 @@ void ADC1_2_IRQHandler(void)
 {
   /* USER CODE BEGIN ADC1_2_IRQn 0 */
 	
-	int x = HAL_ADC_GetValue(&hadc1);
+	x = HAL_ADC_GetValue(&hadc1);
 	x = x * 199/63;
 	if(mode == 2){
 		updateCursor(x/10,0);
@@ -835,6 +839,8 @@ void TIM2_IRQHandler(void)
 		HAL_ADC_Start_IT(&hadc2);
 		HAL_ADC_Start_IT(&hadc3);
 		
+		HAL_TIM_Base_Start_IT(&htim1);
+		HAL_TIM_Base_Start_IT(&htim8);
 		
 		HAL_UART_Receive_IT(&huart2, &dd, sizeof(unsigned char));
 		
@@ -952,6 +958,10 @@ void TIM3_IRQHandler(void)
 				gameTime++;
 				if(gameTime % 20 == 0 && gameTime != 0){
 					level++;
+					activeZombie = 0;
+					maxZombie+=2;
+					zombieSpeed *= 0.8;
+					totalNumberOfZs = 5;
 					HAL_GPIO_WritePin(GPIOE,GPIO_PIN_9,level > 1);
 					HAL_GPIO_WritePin(GPIOE,GPIO_PIN_10,level > 2);
 					HAL_GPIO_WritePin(GPIOE,GPIO_PIN_11,level > 3);
