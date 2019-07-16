@@ -105,10 +105,10 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 extern int limity;
 extern int gameTime;
 extern int y;
+extern int chmode;
 ////////////////////////////////////////CURSOR/////////////////////////////////////////
 int cursor_x = 0;
 int cursor_y = 0;
-char* cursor_sign;
 ////////////////////////////////////////CURSOR/////////////////////////////////////////
 
 struct Bonus{
@@ -132,7 +132,7 @@ struct Zombie{
 struct Zombie zombies[5];
 int totalNumberOfZs = 4;
 const int zombiesEnergy[4] = {1,2,3,4};
-float zombieSpeed = 2;
+float zombieSpeed = 3;
 int maxZombie = 4;
 int activeZombie = 0;
 int ascii = 43;
@@ -145,13 +145,16 @@ char name[5000];
 int nameLen = -1;
 int symb[4][20];
 const int plantsEnergy[3] = {1,2,4};
-const int plantsCoolDown[3] = {4,8,10};
+int plantsCoolDown[3] = {4,8,10};
 int lastPlant[3] = {-11,-11,-11};
 int plantsNumber = 0;
 int level = 1;
 int chance = 5;
 int plantsType = 0;
 int scoreCounter = 0;
+int firstZombieTypeChance = 70;
+int secZombieTypeChance = 85;
+int thirdZombieTypeChance = 95;
 unsigned char dd = '1';
 unsigned char buffer[1000] = "";
 int pos = 0;
@@ -397,7 +400,13 @@ void zombieCreator(){
 			zombies[i].y = rand()%20;
 		}while(!equalInYZombies(zombies[i].y));
 		zombies[i].x = -1;
-		zombies[i].type = (rand()%4);
+		
+		int typeOfZombie = (rand()%100);
+		if(typeOfZombie < firstZombieTypeChance) zombies[i].type = 0;
+		else if(typeOfZombie < secZombieTypeChance) zombies[i].type = 1;
+		else if(typeOfZombie < thirdZombieTypeChance) zombies[i].type = 2;
+		else zombies[i].type = 3;
+		
 		zombies[i].power = zombiesEnergy[zombies[i].type];
 		zombies[i].type += 4;
 		zombies[i].alive = 1;
@@ -414,29 +423,7 @@ void menuInit(){
 	setCursor(2,2);
 	print("About");
 }
-void calScore(){
-	int score = level * (gameTime * 2 - lastChance) + scoreCounter * 100;
-	char s[10];
-	sprintf(s,"%d",score);
-	setCursor(8,2);
-	print(s);
-}
 
-void loseInit(){
-	setCursor(8,0);
-	print("Game");
-	setCursor(8,1);
-	print("Over");
-	calScore();
-}
-
-void winInit(){
-	setCursor(8,0);
-	print("You");
-	setCursor(8,1);
-	print("Won");
-	calScore();
-}
 
 void bonusCreate(){
 	if(!gameStart) return;
@@ -506,10 +493,15 @@ void toPlant(){
 					map[cursor_x][cursor_y] = plantsEnergy[ascii-1] ;
 					symb[cursor_x][cursor_y] = ascii;
 					plantsNumber++;
+					
+					if(gameStart){
+						lastPlant[plantsType-1] = gameTime;
+						if(plantsType-1 == 0) __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_1,0); 
+						else if(plantsType-1 == 1) __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_3,0); 
+						else if(plantsType-1 == 2) __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_4,0); 
+					}
 					if(plantsNumber == 7)
 						gameStart = 1;
-					if(gameStart)
-						lastPlant[plantsType-1] = gameTime;
 				}
 				while(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_0));
 			}
@@ -524,8 +516,6 @@ void toPlant(){
 				case 2:
 					enablePlant();
 					break;
-				
-				
 			}
 			bonus.active = 0;
 			map[bonus.x][bonus.y] = 0;
@@ -610,6 +600,7 @@ void reverse_count(int time,int d4, int d3, int d2, int d1){
 	if (mid < 0) mid = time / 10;
 	int hi = time / 100;
 	
+	if(d1 == 0 && d2 == 1 && d3 == 1 && d4 == 1) k = 0;; 
 	int amount = chance;
 	if(k == 1) amount = hi;
 	else if(k == 2) amount = mid;
@@ -656,9 +647,6 @@ void showPrologue(){
 		__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_3,y);
 		__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_4,y);
 		reverse_count(0,0,0,0,0);
-//		reverse_count(0,1,1,0,1);
-//		reverse_count(0,1,0,1,1);
-//		reverse_count(0,0,1,1,1);
 		HAL_Delay(700);
 		__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_2,0);	
 		__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_1,0);
@@ -673,7 +661,301 @@ void showPrologue(){
 		__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_4,0);
 		reverse_count(0,1,1,1,1);
 		clear();
-		
+}
+
+void graphicDrawer(){
+	for(int i = 0; i < 10; i++){
+		for(int j = 0; j < 4; j++){
+			setCursor(i,j);
+			write(255);
+			setCursor(19-i,j);
+			write(255);
+		}
+	}
+}
+
+void graphicCleaner(){
+	for(int i = 9; i >= 0; i--){
+		for(int j = 1; j >= 0; j--){
+			setCursor(i,j);
+			write(160);
+			setCursor(19-i,j);
+			write(160);
+			setCursor(i,3-j);
+			write(160);
+			setCursor(19-i,3-j);
+			write(160);
+		}
+	}
+}
+
+void graphicOneTwoThree(){
+	clearScreen();
+	setCursor(9,0);
+	write(165);
+	setCursor(10,0);
+	write(255);
+	setCursor(10,1);
+	write(255);
+	setCursor(10,2);
+	write(255);
+	setCursor(8,3);
+	write(255);
+	setCursor(9,3);
+	write(255);
+	setCursor(10,3);
+	write(255);
+	setCursor(11,3);
+	write(255);
+	setCursor(12,3);
+	write(255);
+	HAL_Delay(1000);
+	clearScreen();
+	
+	setCursor(8,0);
+	write(255);
+	setCursor(9,0);
+	write(255);
+	setCursor(10,0);
+	write(255);
+	setCursor(11,0);
+	write(255);
+	setCursor(12,0);
+	write(165);
+	setCursor(8,1);
+	write(165);
+	setCursor(9,1);
+	write(165);
+	setCursor(10,1);
+	write(165);
+	setCursor(11,1);
+	write(165);
+	setCursor(12,1);
+	write(255);
+	setCursor(8,2);
+	write(255);
+	setCursor(9,2);
+	write(165);
+	setCursor(10,2);
+	write(165);
+	setCursor(11,2);
+	write(165);
+	setCursor(12,2);
+	write(165);
+	setCursor(8,3);
+	write(165);
+	setCursor(9,3);
+	write(255);
+	setCursor(10,3);
+	write(255);
+	setCursor(11,3);
+	write(255);
+	setCursor(12,3);
+	write(255);
+	HAL_Delay(1000);
+	clearScreen();
+	
+	setCursor(9,0);
+	write(255);
+	setCursor(10,0);
+	write(255);
+	setCursor(11,0);
+	write(255);
+	setCursor(12,0);
+	write(255);
+	setCursor(9,1);
+	write(161);
+	setCursor(10,1);
+	write(161);
+	setCursor(11,1);
+	write(161);
+	setCursor(12,1);
+	write(161);
+	setCursor(13,1);
+	write(255);
+	setCursor(9,2);
+	write(223);
+	setCursor(10,2);
+	write(223);
+	setCursor(11,2);
+	write(223);
+	setCursor(12,2);
+	write(223);
+	setCursor(13,2);
+	write(255);
+	setCursor(9,3);
+	write(255);
+	setCursor(10,3);
+	write(255);
+	setCursor(11,3);
+	write(255);
+	setCursor(12,3);
+	write(255);
+	HAL_Delay(1000);
+	clearScreen();
+}
+
+
+
+void calScore(){
+	int score = level * (gameTime * 2 - lastChance) + scoreCounter * 100;
+	char s[10];
+	sprintf(s,"%d",score);
+	setCursor(12,1);
+	print(s);
+}
+
+void loseInit(){
+	HAL_Delay(300);
+	setCursor(5,0);
+	print("Game Over");
+	setCursor(5,1);
+	print("Score:");
+	calScore();
+	__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_2,y);	
+	__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_1,y);
+	__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_1,y);
+	__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_2,y);
+	__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_2,y);	
+	__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_3,y);
+	__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_4,y);
+	__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_3,y);
+
+	__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_1,y);
+	__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_3,y);
+	__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_4,y);
+	reverse_count(gameTime,0,0,0,0);
+	HAL_Delay(700);
+	__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_2,0);	
+	__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_1,0);
+	__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_1,0);
+	__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_2,0);
+	__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_2,0);	
+	__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_3,0);
+	__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_4,0);
+	__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_3,0);
+	__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_1,0);
+	__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_3,0);
+	__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_4,0);
+	reverse_count(gameTime,1,1,1,1);
+	clear();
+}
+
+void winInit(){
+		HAL_Delay(300);
+		setCursor(5,0);
+		print("You Won!");
+		setCursor(5,1);
+		print("Score:");
+		calScore();
+		__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_2,y);	
+		__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_1,y);
+		__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_1,y);
+		__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_2,y);
+		__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_2,y);	
+		__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_3,y);
+		__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_4,y);
+		__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_3,y);
+	
+		__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_1,y);
+		__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_3,y);
+		__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_4,y);
+		reverse_count(0,0,0,0,0);
+		HAL_Delay(700);
+		__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_2,0);	
+		__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_1,0);
+		__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_1,0);
+		__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_2,0);
+		__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_2,0);	
+		__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_3,0);
+		__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_4,0);
+		__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_3,0);
+		__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_1,0);
+		__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_3,0);
+		__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_4,0);
+		reverse_count(0,1,1,1,1);
+		clear();
+}
+
+void showAbout(){
+	clearScreen();
+	
+	setCursor(0,0);
+	print("M");
+		setCursor(19,3);
+		print("r");
+	setCursor(1,0);
+	print("o");
+		setCursor(18,3);
+		print("u");
+	setCursor(2,0);
+	print("h");
+		setCursor(17,3);
+		print("o");
+	setCursor(3,0);
+	print("a");
+		setCursor(16,3);
+		print("p");
+	setCursor(4,0);
+	print("m");
+		setCursor(15,3);
+		print("n");
+	setCursor(5,0);
+	print("a");
+		setCursor(14,3);
+		print("e");
+	setCursor(6,0);
+	print("d");
+		setCursor(13,3);
+		print("i");
+	setCursor(7,0);
+	print("r");
+		setCursor(12,3);
+		print("s");
+	setCursor(8,0);
+	print("e");
+		setCursor(11,3);
+		print("s");
+	setCursor(9,0);
+	print("z");
+		setCursor(10,3);
+		print("o");
+	setCursor(10,0);
+	print("a");
+		setCursor(9,3);
+		print("H");
+	setCursor(11,1);
+	print("S");
+		setCursor(8,2);
+		print("h");
+	setCursor(12,1);
+	print("a");
+		setCursor(7,2);
+		print("s");
+	setCursor(13,1);
+	print("b");
+		setCursor(6,2);
+		print("u");
+	setCursor(14,1);
+	print("e");
+		setCursor(5,2);
+		print("o");
+	setCursor(15,1);
+	print("g");
+		setCursor(4,2);
+		print("r");
+	setCursor(16,1);
+	print("h");
+		setCursor(3,2);
+		print("o");
+	setCursor(17,1);
+	print("i");
+		setCursor(2,2);
+		print("S");
+		HAL_Delay(2500);
+		symb[cursor_x][cursor_y] = 160;
+		mode = 1;
+		chmode = 1;
 }
 
 void specialChar(){
@@ -686,14 +968,14 @@ void specialChar(){
   0x11,
   0x11,
   0x1F};
-//	
+	
 	unsigned char flower[8]={0x04,
-  0x0A,
-  0x15,
-  0x0A,
-  0x04,
   0x0E,
-  0x15,
+  0x1B,
+  0x11,
+  0x0A,
+  0x00,
+  0x1B,
   0x04};
 	
 	unsigned char bomb[8]={0x00,

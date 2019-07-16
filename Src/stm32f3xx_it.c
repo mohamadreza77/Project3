@@ -67,11 +67,15 @@ extern float zombieSpeed;
 extern int maxZombie;
 extern unsigned char dd;
 extern unsigned char buffer[1000];
+extern int plantsCoolDown[3];
 extern int pos;
 extern int plantsNumber;
 int tempx, tempy;
 extern int seed;
 extern int nameLen;
+extern int firstZombieTypeChance;
+extern int secZombieTypeChance;
+extern int thirdZombieTypeChance;
 extern TIM_HandleTypeDef htim3;
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim8;
@@ -98,6 +102,10 @@ extern void printKeyboardData(int i, int j, int t, int o);
 extern void bonusCreate();
 extern void createSaveData();
 extern void fillTheZ(int co, int x,int y, int type, int power, int time);///counter,x,y,type,power,time
+extern void graphicDrawer();
+extern void graphicCleaner();
+extern void graphicOneTwoThree();
+extern void showAbout();
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
@@ -803,7 +811,7 @@ void ADC1_2_IRQHandler(void)
 	
 	if(mode == 2){
 		int x = HAL_ADC_GetValue(&hadc1);
-		x = x * 199/63;
+		x = (x * 190)/63;
 		updateCursor(x/10,0);
 	}
 	if(flagADC == 1){
@@ -871,6 +879,7 @@ void TIM2_IRQHandler(void)
 		clearScreen();
 		switch (mode){
 			case 1:
+					graphicDrawer();
 				__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_2,0);	
 				__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_1,0);
 				__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_1,0);
@@ -886,18 +895,19 @@ void TIM2_IRQHandler(void)
 				cursor_y = 0;
 				symb[0][0] = 43;
 				limity = 2;
+				graphicCleaner();
 				menuInit();
 //				HAL_TIM_Base_Start_IT(&htim3);
 			break;
 			case 4:
 				getName();
 			break;
-			case 5:
-				loseInit();
-			break;
-			case 6:
-				winInit();
-			break;
+//			case 5:
+//				loseInit();
+//			break;
+//			case 6:
+//				winInit();
+//			break;
 		}
 		chmode = 0;
 	}
@@ -907,17 +917,20 @@ void TIM2_IRQHandler(void)
 	else if (mode == 1){ //Menu
 		/////////////////////////////////////////////////////////////////////////////////////////////////
 		if(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_0) && cursor_x == 0){ //to newGame
-//			printer(2);
+			graphicOneTwoThree();
 			cursor_x = 0;
 			cursor_y = 0;
 			mode = 2;
 			limity = 3;
-//			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_8,1);
 			__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_2,y); //////PE8 is set
+			__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_1,y); 
+			__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_3,y); 
+			__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_4,y); 
 			chmode = 1;
+			while(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_0));
 		}
 		if(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_0) && cursor_x == 2){ // to go to About
-			
+			showAbout();
 		}
 		/////////////////////////////////////////////////////////////////////////////////////////////////
 	}
@@ -931,6 +944,12 @@ void TIM2_IRQHandler(void)
 		gameLogic();
 		bonusCreate();
 		
+	}
+	else if(mode == 5){
+		loseInit();
+	}
+	else if(mode == 6){
+		winInit();
 	}
 	
 	if(mode != 0 && mode != 5 && mode != 6 && mode != 4)
@@ -959,32 +978,59 @@ void TIM3_IRQHandler(void)
 	}
 		
 	if(gameStart){
-		reverse_count(gameTime,d4,d3,d2,d1);
-		if(d1 == 0){
-			d1 = 1;
-			d2 = 0;
-		}
-		else if(d2 == 0){
-			d2 = 1;
-			d3 = 0;
-		}
-		else if(d3 == 0){
-			d3 = 1;
-			d4 = 0;
-		}
-		else if(d4 == 0){
-			d4 = 1;
-			d1 = 0;
-		}
-		if(mode == 2 || mode == 3){
+//		reverse_count(gameTime,d4,d3,d2,d1);
+//		if(d1 == 0){
+//			d1 = 1;
+//			d2 = 0;
+//		}
+//		else if(d2 == 0){
+//			d2 = 1;
+//			d3 = 0;
+//		}
+//		else if(d3 == 0){
+//			d3 = 1;
+//			d4 = 0;
+//		}
+//		else if(d4 == 0){
+//			d4 = 1;
+//			d1 = 0;
+//		}
+		if(mode == 2){
+			reverse_count(gameTime,d4,d3,d2,d1);
+			if(d1 == 0){
+				d1 = 1;
+				d2 = 0;
+			}
+			else if(d2 == 0){
+				d2 = 1;
+				d3 = 0;
+			}
+			else if(d3 == 0){
+				d3 = 1;
+				d4 = 0;
+			}
+			else if(d4 == 0){
+				d4 = 1;
+				d1 = 0;
+			}
 			oneSecond++;
 			if(gameTime != 160 && oneSecond == 200){
 				gameTime++;
+				if(gameTime - lastPlant[0] >= plantsCoolDown[0]){
+					__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_1,y); 
+				}
+				if(gameTime - lastPlant[1] >= plantsCoolDown[1]){
+					__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_3,y); 
+				}
+				if(gameTime - lastPlant[2] >= plantsCoolDown[2]){
+					__HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_4,y); 
+				}
+				
 				if(gameTime % 20 == 0 && gameTime != 0){
 					level++;
 					activeZombie = 0;
 					maxZombie+=2;
-					zombieSpeed *= 0.8;
+					zombieSpeed *= 0.9;
 					totalNumberOfZs = 5;
 //					HAL_GPIO_WritePin(GPIOE,GPIO_PIN_9,level > 1);
 //					HAL_GPIO_WritePin(GPIOE,GPIO_PIN_10,level > 2);
@@ -993,20 +1039,52 @@ void TIM3_IRQHandler(void)
 //					HAL_GPIO_WritePin(GPIOE,GPIO_PIN_13,level > 5);
 //					HAL_GPIO_WritePin(GPIOE,GPIO_PIN_14,level > 6);
 //					HAL_GPIO_WritePin(GPIOE,GPIO_PIN_15,level > 7);
-			__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_1,level > 1?y:0);
-			__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_1,level > 2?y:0);
-			__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_2,level > 3?y:0);
-			__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_2,level > 4?y:0);	
-			__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_3,level > 5?y:0);
-			__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_4,level > 6?y:0);
-			__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_3,level > 7?y:0);
+					__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_1,level > 1?y:0);
+					__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_1,level > 2?y:0);
+					__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_2,level > 3?y:0);
+					__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_2,level > 4?y:0);	
+					__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_3,level > 5?y:0);
+					__HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_4,level > 6?y:0);
+					__HAL_TIM_SET_COMPARE(&htim8,TIM_CHANNEL_3,level > 7?y:0);
+					
+					if(level == 2){
+						firstZombieTypeChance = 60;
+						secZombieTypeChance = 80;
+						thirdZombieTypeChance = 92;
+					}
+					else if(level == 3){
+						firstZombieTypeChance = 50;
+						secZombieTypeChance = 75;
+						thirdZombieTypeChance = 90;
+						
+					}else if(level == 4){
+						firstZombieTypeChance = 40;
+						secZombieTypeChance = 70;
+						thirdZombieTypeChance = 88;
+					}else if(level == 5){
+						firstZombieTypeChance = 30;
+						secZombieTypeChance = 65;
+						thirdZombieTypeChance = 86;
+					}else if(level == 6){
+						firstZombieTypeChance = 20;
+						secZombieTypeChance = 55;
+						thirdZombieTypeChance = 80;
+					}else if(level == 7){
+						firstZombieTypeChance = 10;
+						secZombieTypeChance = 40;
+						thirdZombieTypeChance = 70;
+					}else if(level == 8){
+						firstZombieTypeChance = 0;
+						secZombieTypeChance = 20;
+						thirdZombieTypeChance = 50;
+					}
 				}
 				oneSecond =0;
-				if(gameTime%2==0){
-					createSaveData();
-					printf(name);
-					memset(name, 0, 1000 * (sizeof name[0]) );
-				}
+//				if(gameTime%2==0){
+//					createSaveData();
+//					printf(name);
+//					memset(name, 0, 1000 * (sizeof name[0]) );
+//				}
 			}
 			if(gameTime == 160){
 				chmode = 1;
