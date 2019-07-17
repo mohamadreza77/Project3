@@ -155,6 +155,7 @@ int scoreCounter = 0;
 int firstZombieTypeChance = 70;
 int secZombieTypeChance = 85;
 int thirdZombieTypeChance = 95;
+int chanceToSpawnZombies = 40;
 unsigned char dd = '1';
 unsigned char buffer[1000] = "";
 int pos = 0;
@@ -263,7 +264,7 @@ void createSaveData(){
 	
 	for(int i = 0; i < 4; i++){
 		for(int j = 0; j < 20; j++){
-			if(symb[i][j] != -1 && map[i][j] != 0){
+			if(symb[i][j] != -1 && map[i][j] != 0 && map[i][j] != 9){
 				sprintf(temp,"%d",i);
 				strcat(name,temp);
 				strcat(name,":");
@@ -321,12 +322,14 @@ void fillTheZ(int co, int x,int y, int type, int power, int time){
 int collision(i){
 	if(zombies[i].x == 3) return 0;
 	if(symb[zombies[i].x + 1][zombies[i].y] < 4 && symb[zombies[i].x + 1][zombies[i].y] > 0){
+			setCursor(zombies[i].y,zombies[i].x);
+			blink();
+			HAL_Delay(500);
 			zombies[i].power--;
 			map[zombies[i].x + 1][zombies[i].y]--;
 			if(zombies[i].power == 0){
 				zombies[i].alive = !zombies[i].alive;
 				symb[zombies[i].x][zombies[i].y] = 160;
-//				activeZombie--;
 			}
 			if(map[zombies[i].x + 1][zombies[i].y] == 0){
 				symb[zombies[i].x + 1][zombies[i].y] = 160;
@@ -361,7 +364,6 @@ void moveZombie(int i){
 			zombies[i].alive = !zombies[i].alive;
 			symb[3][zombies[i].y] = 160;
 			map[3][zombies[i].y] = 0;
-//			activeZombie--;
 		}else{
 			map[zombies[i].x][zombies[i].y] = zombies[i].power;
 			symb[zombies[i].x][zombies[i].y] = zombies[i].type;
@@ -387,6 +389,7 @@ int equalInYZombies(int y){
 }
 
 void zombieCreator(){
+	if(rand()%1000 > chanceToSpawnZombies) return;
 	if(activeZombie < maxZombie){
 		int i = 0;
 		for(; i < totalNumberOfZs; i ++){
@@ -492,6 +495,7 @@ void toPlant(){
 					){
 					map[cursor_x][cursor_y] = plantsEnergy[ascii-1] ;
 					symb[cursor_x][cursor_y] = ascii;
+						
 					plantsNumber++;
 					
 					if(gameStart){

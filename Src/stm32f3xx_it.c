@@ -50,7 +50,7 @@ int keyboardCounter = 0;
 int oneAndHalfSecond = 0;
 int override = 0;
 int  passedTimeKey = 0;
-//int x;
+int volumePosition = 0;
 int y;
 extern char name[8];
 extern int mode; // 0 => prologue, 1 => menu, 2 => play
@@ -71,6 +71,7 @@ extern int plantsCoolDown[3];
 extern int pos;
 extern int plantsNumber;
 int tempx, tempy;
+extern int chanceToSpawnZombies;
 extern int seed;
 extern int nameLen;
 extern int firstZombieTypeChance;
@@ -79,13 +80,10 @@ extern int thirdZombieTypeChance;
 extern TIM_HandleTypeDef htim3;
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim8;
-////////////////////////////////////////CURSOR/////////////////////////////////////////
 extern int cursor_x;
 extern int cursor_y;
-extern char* cursor_sign;
 extern int gameStart;
 
-////////////////////////////////////////CURSOR/////////////////////////////////////////
 extern void printer(int p);
 extern void blinking();
 extern void updateCursor(int difX, int difY);
@@ -299,8 +297,8 @@ void EXTI0_IRQHandler(void)
 		}
 		
 		if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_0) && i == 0){ //s13
-			if(mode == 1 || mode == 2 || mode == 3){
-				updateCursor(0,1);
+			if(mode == 1 || mode == 2){
+				updateCursor(volumePosition,1);
 			}
 			else if(mode == 4){
 				createSaveData();
@@ -322,8 +320,8 @@ void EXTI0_IRQHandler(void)
 			HAL_Delay(20);
 		}
 		if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_0) && i == 1){ //s9
-			if(mode == 1 || mode == 2 || mode == 3){
-				updateCursor(0,-1);
+			if(mode == 1 || mode == 2){
+				updateCursor(volumePosition,-1);
 			}
 			while(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_0)){
 				if(mode == 2){
@@ -810,9 +808,9 @@ void ADC1_2_IRQHandler(void)
 	
 	
 	if(mode == 2){
-		int x = HAL_ADC_GetValue(&hadc1);
-		x = (x * 190)/63;
-		updateCursor(x/10,0);
+		volumePosition = HAL_ADC_GetValue(&hadc1);
+		volumePosition = (volumePosition * 19)/63;
+		updateCursor(volumePosition,0);
 	}
 	if(flagADC == 1){
 		seed = HAL_ADC_GetValue(&hadc2);
@@ -938,8 +936,8 @@ void TIM2_IRQHandler(void)
 		
 		if(chance <= 0){
 			chance = 0;
-			chmode = 1;
-			mode = 5; //// lose
+		chmode = 1;
+		mode = 5; //// lose
 		}
 		gameLogic();
 		bonusCreate();
@@ -978,23 +976,6 @@ void TIM3_IRQHandler(void)
 	}
 		
 	if(gameStart){
-//		reverse_count(gameTime,d4,d3,d2,d1);
-//		if(d1 == 0){
-//			d1 = 1;
-//			d2 = 0;
-//		}
-//		else if(d2 == 0){
-//			d2 = 1;
-//			d3 = 0;
-//		}
-//		else if(d3 == 0){
-//			d3 = 1;
-//			d4 = 0;
-//		}
-//		else if(d4 == 0){
-//			d4 = 1;
-//			d1 = 0;
-//		}
 		if(mode == 2){
 			reverse_count(gameTime,d4,d3,d2,d1);
 			if(d1 == 0){
@@ -1032,6 +1013,7 @@ void TIM3_IRQHandler(void)
 					maxZombie+=2;
 					zombieSpeed *= 0.9;
 					totalNumberOfZs = 5;
+					chanceToSpawnZombies += 10;
 //					HAL_GPIO_WritePin(GPIOE,GPIO_PIN_9,level > 1);
 //					HAL_GPIO_WritePin(GPIOE,GPIO_PIN_10,level > 2);
 //					HAL_GPIO_WritePin(GPIOE,GPIO_PIN_11,level > 3);
@@ -1056,7 +1038,6 @@ void TIM3_IRQHandler(void)
 						firstZombieTypeChance = 50;
 						secZombieTypeChance = 75;
 						thirdZombieTypeChance = 90;
-						
 					}else if(level == 4){
 						firstZombieTypeChance = 40;
 						secZombieTypeChance = 70;
@@ -1080,11 +1061,6 @@ void TIM3_IRQHandler(void)
 					}
 				}
 				oneSecond =0;
-//				if(gameTime%2==0){
-//					createSaveData();
-//					printf(name);
-//					memset(name, 0, 1000 * (sizeof name[0]) );
-//				}
 			}
 			if(gameTime == 160){
 				chmode = 1;
@@ -1109,7 +1085,7 @@ void USART2_IRQHandler(void)
   /* USER CODE END USART2_IRQn 0 */
   HAL_UART_IRQHandler(&huart2);
   /* USER CODE BEGIN USART2_IRQn 1 */
-	if (dd != 0x0D){
+	if (dd != 0x0D && dd != 63){
 			buffer[pos] = dd;
 			pos++;
 			buffer[pos] = '\0';
@@ -1172,9 +1148,6 @@ void USART2_IRQHandler(void)
 			if(negsign == 1){
 				lastPlant[0] = -lastPlant[0];
 			}
-//			char s[5];
-//			sprintf(s,"%d",lastPlant[0]);
-//			print(s);
 			
 			lastPlant[1]=0;
 			ii = 0;
@@ -1263,7 +1236,9 @@ void USART2_IRQHandler(void)
 				}
 			}
 			chmode=1;
-			mode = 2;		
+			mode = 2;	
+			gameStart = 1;			
+			limity = 3;
 		}
 		
 	HAL_UART_Receive_IT(&huart2, &dd, sizeof(unsigned char));
